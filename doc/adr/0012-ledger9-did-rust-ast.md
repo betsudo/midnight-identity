@@ -70,9 +70,19 @@ The repository's WASM-clean crates compile on `wasm32-unknown-unknown`. The DID
 runtime itself does not yet qualify for `aarch64-apple-ios-sim`: released
 `midnight-storage=3.0.0` unconditionally enables `sysinfo=0.39.6`, whose Apple
 backend imports macOS-only libc symbols when built for iOS. This is an upstream
-dependency-cone blocker, not a generated DID contract failure. Do not restore
-mobile claims until the Ledger 9 storage/runtime release makes that dependency
-target-aware (or removes it from the mobile cone).
+dependency-cone blocker, not a generated DID contract failure.
+
+Signed Betsudo commit `cea4ab424083850c14bfcb37ac5d09fd601f7614`, proposed
+in `betsudo/midnight-ledger#40` against the qualified
+`integration/ledger9/ledger-9.1.0.1` line, removes the unused dependency from
+`midnight-storage-core` and gates the storage crate's copy behind
+`stress-test`. With the complete storage boundary locally pinned to that one
+revision, the DID runtime compiles for both `aarch64-apple-ios-sim` and
+`aarch64-linux-android` using Rust 1.99. A workspace `[patch.crates-io]` is not
+inherited by downstream Git consumers, however, so this repository must not
+claim or commit that local-only workaround. Adopt a corrected published storage
+release, or a coordinated single-source Ledger graph, before restoring the
+mobile claim.
 
 The 2026-11-16 local arm64 receipt passed exact DID regeneration, workspace
 formatting, lint with warnings denied, all repository tests (678 first-party
