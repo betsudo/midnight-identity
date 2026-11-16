@@ -12,16 +12,20 @@ default:
 #   <target>/zkir/<circuit>.zkir          -- ZKIR per exported circuit
 #   <target>/keys/<circuit>.{prover,verifier}  -- proving + verifier keys (emitted by zkir tool)
 # Source: third_party compact compiler/passes.ss (generate-everything pass).
+did_revision := "750268664278c162e9171406983dc45f24bb5be7"
+
 codegen:
     @mkdir -p target-gen
     @rm -rf target-gen/contract-out
     git submodule update --init third_party/midnight-did
-    compactc --rust --skip-ts \
+    git -C third_party/midnight-did checkout --detach {{did_revision}}
+    compactc-did --target rust --skip-zk \
         third_party/midnight-did/packages/contract/src/did.compact \
         target-gen/contract-out
     @mkdir -p crates/midnight-did-runtime/src/contract
     cp target-gen/contract-out/contract/lib.rs crates/midnight-did-runtime/src/contract/generated.rs
     @mkdir -p crates/midnight-did-runtime/assets/keys
+    cp target-gen/contract-out/compiler/rust-compatibility.json crates/midnight-did-runtime/assets/rust-compatibility.json
     # Recursive find picks up keys whether they live in keys/, zkir/, or contract/.
     find target-gen/contract-out -name "*.zkir"     -exec cp {} crates/midnight-did-runtime/assets/keys/ \;
     find target-gen/contract-out -name "*.prover"   -exec cp {} crates/midnight-did-runtime/assets/keys/ \;
@@ -39,8 +43,18 @@ codegen:
 # `zkir` tool ("Warning: ZKIR not found; skipping final circuit
 # compilation"), so `just codegen` never emits them and there is nothing
 # to compare. Wire them in only alongside a zkir-providing devshell.
-codegen-check: codegen
-    git diff --exit-code -- crates/midnight-did-runtime/src/contract crates/midnight-did-runtime/assets/keys
+codegen-check:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    before=$(mktemp -d "${TMPDIR:-/tmp}/midnight-did-codegen.XXXXXX")
+    trap 'rm -rf "$before"' EXIT
+    cp crates/midnight-did-runtime/src/contract/generated.rs "$before/generated.rs"
+    cp crates/midnight-did-runtime/assets/rust-compatibility.json "$before/rust-compatibility.json"
+    cp -R crates/midnight-did-runtime/assets/keys "$before/keys"
+    just codegen
+    diff -u "$before/generated.rs" crates/midnight-did-runtime/src/contract/generated.rs
+    diff -u "$before/rust-compatibility.json" crates/midnight-did-runtime/assets/rust-compatibility.json
+    diff -ru "$before/keys" crates/midnight-did-runtime/assets/keys
 
 # Re-generate the VC Rust bindings from the pinned, released VC packages.
 #

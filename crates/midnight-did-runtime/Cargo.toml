@@ -13,27 +13,27 @@ name = "midnight_did_runtime"
 path = "src/lib.rs"
 
 [features]
-default    = [  ]
-http       = [ "dep:reqwest" ]
-node-subxt = [ "dep:futures", "dep:subxt", "dep:tokio" ]
+default            = [  ]
+http               = [ "dep:reqwest" ]
+ledger-transaction = [ "midnight-compact-runtime/ledger-transaction" ]
+node-subxt         = [ "dep:futures", "dep:subxt", "dep:tokio" ]
 
 [dependencies]
 # The immutable Compact runtime revision is declared at the workspace root.
 # Its sibling macro crate resolves from the same Git checkout. Nix path
 # substitution is available only through the explicit local override wrapper.
-midnight-compact-runtime = { workspace = true }
+midnight-compact-runtime = { package = "midnight-compact-runtime", git = "https://github.com/MediaNoxLabs/compact.git", rev = "7a4fab772ee34c19053ce293d08052b501ce4b50", features = [ "experimental-functional" ] }
 
-# Ledger workspace dependencies needed by generated.rs and the native backend.
-# They are explicit so the public manifest records the complete supported
-# Ledger 8 source cone instead of relying only on Compact's transitive edges.
-# Every entry resolves from one exact Git revision, shared with Compact.
-midnight-base-crypto      = { workspace = true }
-midnight-coin-structure   = { workspace = true }
-midnight-onchain-runtime  = { workspace = true }
-midnight-serialize        = { workspace = true }
-midnight-ledger           = { workspace = true }
-midnight-storage          = { workspace = true }
-midnight-transient-crypto = { workspace = true }
+# Released Ledger 9 dependencies needed by generated.rs and the native backend.
+# These are intentionally local exact pins: shared workspace dependency names
+# remain on Ledger 8 for the out-of-scope VC and Passport crates.
+midnight-base-crypto      = { version = "=1.1.1" }
+midnight-coin-structure   = { version = "=3.0.1" }
+midnight-onchain-runtime  = { version = "=4.0.1" }
+midnight-serialize        = { version = "=1.2.1" }
+midnight-ledger           = { package = "midnight-ledger-v9", version = "=1.0.1" }
+midnight-storage          = { version = "=3.0.0" }
+midnight-transient-crypto = { version = "=3.0.1" }
 # Sibling first-party crates — R2-2 (v0.4.0) lifts ledger-shape types
 # (`DidLedgerSnapshot`, `LedgerVerificationMethod`, `MapMutation`, …) into
 # this crate so `DidContractCall` can carry them as variant payloads. The
@@ -59,6 +59,7 @@ blake2     = "0.10"
 # return a typed `ValidationError`.
 thiserror = "2"
 rand      = "0.8"
+sha2      = "0.10"
 zeroize   = "1.9"
 futures   = { version = "0.3", optional = true }
 subxt     = { version = "0.44", optional = true }
@@ -66,8 +67,7 @@ tokio     = { version = "1", features = [ "time" ], optional = true }
 reqwest   = { version = "0.13", default-features = false, features = [ "json", "rustls" ], optional = true }
 
 [dev-dependencies]
-midnight-did-jubjub-schnorr = { workspace = true }
-sha2                        = "0.10"
+midnight-zkir = { version = "=3.2.1" }
 # R2-1: tokio runtime for the `Backend` impls' unit tests (current-thread,
 # no IO).
 tokio = { version = "1", features = [ "macros", "rt" ] }

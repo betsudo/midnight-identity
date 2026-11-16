@@ -13,6 +13,7 @@
 /third_party/midnight-zk
 /third_party/compact-runtime-rs
 /third_party/compact/
+/third_party/compact-did/
 
 # Editor / OS
 .idea

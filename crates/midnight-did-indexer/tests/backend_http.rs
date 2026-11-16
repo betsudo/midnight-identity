@@ -15,7 +15,7 @@
 
 //! `IndexerBackend` read-path tests against a local mock GraphQL server
 //! serving REAL captured chain state
-//! (`tests/fixtures/state-050-enriched.hex` — same capture as the
+//! (`tests/fixtures/state-ledger9-enriched.hex` — same capture as the
 //! resolver crate's route tests: a 0.5.0 DID from the standalone stack
 //! with a JWK verification method and an authentication relation).
 
@@ -28,8 +28,8 @@ use midnight_did_runtime::backend::{Backend, BackendError, BuiltTx};
 use midnight_did_runtime::state_decode::decode_ledger_snapshot;
 use serde_json::{Value, json};
 
-const STATE_HEX: &str = include_str!("fixtures/state-050-enriched.hex");
-const ADDR: &str = include_str!("fixtures/state-050-enriched.addr");
+const STATE_HEX: &str = include_str!("fixtures/state-ledger9-enriched.hex");
+const ADDR: &str = include_str!("fixtures/state-ledger9-enriched.addr");
 
 fn fixture_addr() -> String {
     ADDR.trim().to_string()

@@ -8,7 +8,10 @@
       midnightZkSrc,
       compactRuntimeRsSrc,
       compactRuntimeRsMacrosSrc,
+      compactDidRuntimeRsSrc,
+      compactDidRuntimeRsMacrosSrc,
       compactPkg,
+      compactDidPkg,
       ...
     }:
     let
@@ -50,9 +53,8 @@
           echo "Linked $LINK -> $TARGET"
         fi
 
-        # Materialize third_party/midnight-zk as a symlink to the nix-store path.
-        # Provides the patched `midnight-proofs` crate referenced by
-        # [patch.crates-io] in the root Cargo.toml. See ADR 0006.
+        # Retain the Ledger 8 proof source for the Passport Vault evidence
+        # generator. The DID Cargo graph uses released Ledger 9 crates.
         TARGET="${midnightZkSrc}"
         LINK="$ROOT_DIR/third_party/midnight-zk"
         if [ -L "$LINK" ] && [ "$(readlink "$LINK")" = "$TARGET" ]; then
@@ -90,6 +92,31 @@
           echo "Linked $LINK -> $TARGET"
         fi
 
+        # Materialise the DID-only Ledger 9 runtime separately. This prevents
+        # the optional path override from changing VC/Passport's Ledger 8
+        # runtime identity inside the same development shell.
+        mkdir -p "$ROOT_DIR/third_party/compact-did"
+
+        TARGET="${compactDidRuntimeRsSrc}"
+        LINK="$ROOT_DIR/third_party/compact-did/runtime-rs"
+        if [ -L "$LINK" ] && [ "$(readlink "$LINK")" = "$TARGET" ]; then
+          :
+        else
+          rm -rf "$LINK"
+          ln -s "$TARGET" "$LINK"
+          echo "Linked $LINK -> $TARGET"
+        fi
+
+        TARGET="${compactDidRuntimeRsMacrosSrc}"
+        LINK="$ROOT_DIR/third_party/compact-did/runtime-rs-macros"
+        if [ -L "$LINK" ] && [ "$(readlink "$LINK")" = "$TARGET" ]; then
+          :
+        else
+          rm -rf "$LINK"
+          ln -s "$TARGET" "$LINK"
+          echo "Linked $LINK -> $TARGET"
+        fi
+
         echo "Entered midnight-identity devshell. Run 'just --list' for available commands."
       '';
 
@@ -119,6 +146,7 @@
         default = mkWorkspaceShell (
           [
             compactPkg
+            compactDidPkg
             pkgs.pi-coding-agent
           ]
           ++ rustPackages

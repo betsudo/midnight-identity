@@ -6,7 +6,7 @@ exclude  = [ "third_party/midnight-ledger" ]
 [workspace.package]
 version      = "0.5.0"
 edition      = "2024"
-rust-version = "1.89"
+rust-version = "1.99"
 license      = "Apache-2.0"
 authors      = [ "Midnight Foundation" ]
 repository   = "https://github.com/MediaNoxLabs/midnight-identity"
@@ -16,8 +16,9 @@ repository   = "https://github.com/MediaNoxLabs/midnight-identity"
 # version exact and its feature cone minimal; Midnight-specific semantics remain
 # in this workspace (ADR 0011).
 identus-crypto = { version = "=0.1.0-rc.1", default-features = false, features = [ "hash" ] }
-# Keep the complete Ledger 8 cone on one immutable source. Compact pins its
-# matching runtime cone to the same revision.
+# Keep the shared names on the Ledger 8 cone because VC and Passport are out
+# of scope for this migration. The DID runtime declares its exact Ledger 9
+# cohort locally so the two product surfaces cannot be silently conflated.
 midnight-base-crypto      = { git = "https://github.com/MediaNoxLabs/midnight-ledger.git", rev = "8655615e7c4cbf3a1187b3203bf72e69dc09b8dc" }
 midnight-coin-structure   = { git = "https://github.com/MediaNoxLabs/midnight-ledger.git", rev = "8655615e7c4cbf3a1187b3203bf72e69dc09b8dc" }
 midnight-onchain-runtime  = { git = "https://github.com/MediaNoxLabs/midnight-ledger.git", rev = "8655615e7c4cbf3a1187b3203bf72e69dc09b8dc" }
@@ -29,10 +30,9 @@ midnight-transient-crypto = { git = "https://github.com/MediaNoxLabs/midnight-le
 midnight-zkir             = { git = "https://github.com/MediaNoxLabs/midnight-ledger.git", rev = "8655615e7c4cbf3a1187b3203bf72e69dc09b8dc" }
 midnight-zswap            = { git = "https://github.com/MediaNoxLabs/midnight-ledger.git", rev = "8655615e7c4cbf3a1187b3203bf72e69dc09b8dc" }
 midnight-ledger           = { git = "https://github.com/MediaNoxLabs/midnight-ledger.git", rev = "8655615e7c4cbf3a1187b3203bf72e69dc09b8dc" }
-# Compact's runtime and sibling macro crate are resolved together from this
-# immutable repository revision. Nix path substitution remains an opt-in local
-# acceleration through scripts/cargo-with-nix-overrides.sh.
-compact-runtime          = { package = "midnight-compact-runtime", git = "https://github.com/MediaNoxLabs/compact.git", rev = "32e314770da10cc62dab30dcfeb340ec4c6bcb64" }
+compact-runtime           = { package = "midnight-compact-runtime", git = "https://github.com/MediaNoxLabs/compact.git", rev = "32e314770da10cc62dab30dcfeb340ec4c6bcb64" }
+# VC and Passport generated sources import this dependency name directly, so it
+# remains on their existing runtime revision. DID pins Runtime 0.2.0 locally.
 midnight-compact-runtime = { package = "midnight-compact-runtime", git = "https://github.com/MediaNoxLabs/compact.git", rev = "32e314770da10cc62dab30dcfeb340ec4c6bcb64" }
 # common
 serde      = { version = "1", features = [ "derive" ] }
@@ -66,31 +66,10 @@ midnight-passport-account-source = { path = "crates/midnight-passport-account-so
 midnight-passport-account        = { path = "crates/midnight-passport-account", version = "=0.5.0" }
 midnight-passport-vault-source   = { path = "crates/midnight-passport-vault-source", version = "=0.5.0" }
 
-# ---- Keep the Ledger8 proofs fork source-coherent ----
-#
-# `midnight-ledger/transient-crypto` calls three methods on `ParamsKZG`
-# that only exist on a patched fork of `midnight-proofs`:
-#   - read_mmap_arc        (mmap-backed SRS)
-#   - write_mmap_companion (write the companion mmap file)
-#   - read_custom_lazy     (seekable lazy parse, skips g_lagrange)
-#
-# Upstream `midnight-ledger`'s own Cargo.toml carries a [patch.crates-io]
-# entry pointing at a developer-local path. That patch is *not* inherited
-# when `midnight-ledger` is consumed as a path-dep from this workspace —
-# `cargo` only honours [patch.crates-io] declared at the workspace root.
-#
-# The midnight-zk fork is also exposed as a flake input (see `flake.nix`),
-# materialised via `third_party/midnight-zk` for local inspection. The git
-# dependency below is what cargo actually consumes — using a path-dep on
-# `third_party/midnight-zk/proofs` doesn't work because that crate's
-# `Cargo.toml` inherits from the *fork's* own [workspace.dependencies], and
-# `cargo` resolves `workspace = true` against *this* workspace's root, not
-# the path-dep's enclosing workspace.
-#
-# Pinning by rev keeps reproducibility independent of branch movement.
-# See `doc/adr/0006-runtime-crate-halo2-block.md` for the full story.
+# The Ledger 8 transient-crypto package relies on this source-compatible
+# proofs fork. Ledger 9 resolves its released 0.8.x proof cohort separately.
 [patch.crates-io]
-midnight-proofs           = { git = "https://github.com/MediaNoxLabs/midnight-zk.git", rev = "532629b044a88473a7175f4a96c2511c91156136" }
+midnight-proofs = { git = "https://github.com/MediaNoxLabs/midnight-zk.git", rev = "532629b044a88473a7175f4a96c2511c91156136" }
 
 [profile.dev]
 debug = "limited"

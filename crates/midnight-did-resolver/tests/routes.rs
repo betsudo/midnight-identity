@@ -14,9 +14,9 @@
 // limitations under the License.
 
 //! End-to-end route tests against a mock indexer serving REAL captured
-//! chain state (`tests/fixtures/state-050-enriched.hex` — a 0.5.0 DID
-//! deployed on the standalone stack with a JWK verification method and
-//! an authentication relation; address in the sibling `.addr` file).
+//! Ledger 9 contract state (`tests/fixtures/state-ledger9-enriched.hex`) with
+//! a JWK verification method and authentication relation; its address is in
+//! the sibling `.addr` file.
 
 use std::sync::Arc;
 
@@ -26,8 +26,8 @@ use axum::{Json, Router};
 use midnight_did_resolver::{ResolverConfig, ResolverService, build_router};
 use serde_json::{Value, json};
 
-const STATE_HEX: &str = include_str!("fixtures/state-050-enriched.hex");
-const ADDR: &str = include_str!("fixtures/state-050-enriched.addr");
+const STATE_HEX: &str = include_str!("fixtures/state-ledger9-enriched.hex");
+const ADDR: &str = include_str!("fixtures/state-ledger9-enriched.addr");
 
 fn fixture_addr() -> String {
     ADDR.trim().to_string()

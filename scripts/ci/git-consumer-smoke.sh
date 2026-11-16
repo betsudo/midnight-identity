@@ -5,9 +5,7 @@
 
 set -euo pipefail
 
-ledger_revision=8655615e7c4cbf3a1187b3203bf72e69dc09b8dc
-compact_revision=32e314770da10cc62dab30dcfeb340ec4c6bcb64
-proofs_revision=532629b044a88473a7175f4a96c2511c91156136
+compact_revision=7a4fab772ee34c19053ce293d08052b501ce4b50
 repository_url=https://github.com/MediaNoxLabs/midnight-identity.git
 revision=
 
@@ -49,16 +47,11 @@ cat > "$scratch/Cargo.toml" <<EOF
 name = "midnight-did-git-consumer"
 version = "0.0.0"
 edition = "2024"
-rust-version = "1.89"
+rust-version = "1.99"
 publish = false
 
 [dependencies]
-midnight-did-runtime = { git = "$repository_url", rev = "$revision", features = ["http", "node-subxt"] }
-
-# Cargo does not inherit patches from a Git dependency. Ledger8 transient
-# crypto requires the maintained proofs fork's disk-spill feature.
-[patch.crates-io]
-midnight-proofs           = { git = "https://github.com/MediaNoxLabs/midnight-zk.git", rev = "$proofs_revision" }
+midnight-did-runtime = { git = "$repository_url", rev = "$revision", features = ["ledger-transaction"] }
 EOF
 printf 'fn main() {}\n' > "$scratch/src/main.rs"
 
@@ -85,22 +78,49 @@ assert_single_source() {
   fi
 }
 
-for package in \
-  midnight-base-crypto \
-  midnight-coin-structure \
-  midnight-onchain-runtime \
-  midnight-onchain-state \
-  midnight-onchain-vm \
-  midnight-serialize \
-  midnight-storage \
-  midnight-transient-crypto \
-  midnight-zswap \
-  midnight-ledger
-do
-  assert_single_source "$package" MediaNoxLabs/midnight-ledger "$ledger_revision"
-done
 assert_single_source midnight-compact-runtime MediaNoxLabs/compact "$compact_revision"
-assert_single_source midnight-proofs MediaNoxLabs/midnight-zk "$proofs_revision"
+
+assert_registry_version() {
+  local package=$1 expected_version=$2
+  local matching
+  matching=$(jq \
+    --arg package "$package" \
+    --arg version "$expected_version" \
+    '[.packages[] | select(.name == $package and .version == $version and (.source // "" | startswith("registry+")))] | length' \
+    "$metadata")
+  if [[ "$matching" != 1 ]]; then
+    echo "$package did not resolve exactly once from the registry at $expected_version" >&2
+    jq --arg package "$package" '.packages[] | select(.name == $package) | {name, version, source}' "$metadata" >&2
+    exit 1
+  fi
+}
+
+while read -r package version; do
+  assert_registry_version "$package" "$version"
+done <<'VERSIONS'
+midnight-base-crypto 1.1.1
+midnight-coin-structure 3.0.1
+midnight-ledger-v9 1.0.1
+midnight-onchain-runtime 4.0.1
+midnight-onchain-state 4.0.1
+midnight-onchain-vm 4.0.1
+midnight-proofs 0.8.2
+midnight-serialize 1.2.1
+midnight-storage 3.0.0
+midnight-transient-crypto 3.0.1
+midnight-zk-stdlib 2.4.0
+midnight-zswap 9.0.1
+VERSIONS
+
+# `midnight-zkir=3.2.1` is an exact development dependency used to parse the
+# generated compiler artifacts. It is intentionally absent from this runtime
+# consumer cone; Ledger 9 may retain an older ZKIR version as a private
+# implementation dependency.
+
+if jq -e '.packages[] | select((.source // "") | contains("midnight-ledger.git") or contains("midnight-zk.git"))' "$metadata" >/dev/null; then
+  echo "Ledger 9 consumer graph unexpectedly contains a Git-sourced ledger/proof package" >&2
+  exit 1
+fi
 
 if jq -e '.packages[] | select(.name == "midnight-did-uniffi")' "$metadata" >/dev/null; then
   echo "the supported Git consumer cone must not expose midnight-did-uniffi" >&2

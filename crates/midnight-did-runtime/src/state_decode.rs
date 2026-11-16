@@ -23,7 +23,7 @@
 //!
 //! ## State layout
 //!
-//! did.compact 0.5.0 declares 19 ledger fields. `StateValue::Array` is
+//! did.compact 1.0.0-rc.1 declares 19 ledger fields. `StateValue::Array` is
 //! capped at 16 slots, so the on-chain layout (as produced by the TS
 //! reference constructor and read by every generated accessor) chunks
 //! them into an outer 2-slot array: `[0]` holds fields 0–3 and `[1]`
@@ -44,13 +44,13 @@
 
 use std::collections::BTreeMap;
 
-use midnight_compact_runtime::{
-    AlignedValue, ChargedState, ContractState, DefaultDB, JubjubPoint, StateValue, aligned_bytes,
-};
+use midnight_compact_runtime::JubjubPoint;
+use midnight_compact_runtime::fab::AlignedValue;
+use midnight_compact_runtime::ledger::{ChargedState, ContractState, DefaultDB, LedgerArray, StateValue};
 use midnight_did_domain::did_document::{CurveType, KeyType, VerificationMethodType};
 
 use crate::backend::BackendError;
-use crate::contract::ledger;
+use crate::contract::ledger_contract::PublicStateView;
 use crate::contract_call::{
     DidLedgerSnapshot, JubjubPointHex, LedgerPublicKeyJwk, LedgerSchnorrJubjubVerificationMethod, LedgerService,
     LedgerVerificationMethod, NewJubjubPointHex,
@@ -74,7 +74,7 @@ mod slot {
 /// Deserialize the raw bytes the indexer returns for a contract's
 /// `state` field into the contract's charged state.
 ///
-/// The byte stream is self-describing (`midnight:contract-state[v6]:`
+/// The byte stream is self-describing (`midnight:contract-state[v8]:`
 /// tag prefix), so a version mismatch with the pinned ledger crates
 /// fails loudly rather than mis-decoding.
 pub fn charged_state_from_bytes(bytes: &[u8]) -> Result<ChargedState<DefaultDB>, BackendError> {
@@ -88,7 +88,7 @@ pub fn charged_state_from_bytes(bytes: &[u8]) -> Result<ChargedState<DefaultDB>,
 /// Scalars go through the generated `ledger()` accessors; Map/Set fields
 /// are walked directly (no generated ADT views exist — see module docs).
 pub fn decode_ledger_snapshot(state: &ChargedState<DefaultDB>) -> Result<DidLedgerSnapshot, BackendError> {
-    let view = ledger(state);
+    let view = PublicStateView::from(state.get_ref());
     let chunks = StateChunks::from_state(state)?;
 
     // Through the generated accessor: A30 (compact 0.31.110) made
@@ -99,10 +99,10 @@ pub fn decode_ledger_snapshot(state: &ChargedState<DefaultDB>) -> Result<DidLedg
     // nix-store epoch mtimes defeat cargo's fingerprinting, so `cargo clean
     // -p midnight-compact-runtime` is required after compact pin syncs
     // (MediaNoxLabs/compact#15 has the full diagnosis).
-    let id_hex = hex::encode(view.id().map_err(|e| decode_err("id", &e))?.bytes);
+    let id_hex = hex::encode(view.id().map_err(|e| decode_err("id", &e))?.bytes.0);
     let controller_public_key_hex = jubjub_x_hex(
         &view
-            .controller_public_key()
+            .controllerPublicKey()
             .map_err(|e| decode_err("controllerPublicKey", &e))?,
     )?;
 
@@ -113,11 +113,17 @@ pub fn decode_ledger_snapshot(state: &ChargedState<DefaultDB>) -> Result<DidLedg
         active: view.active().map_err(|e| decode_err("active", &e))?,
         deactivated: view.deactivated().map_err(|e| decode_err("deactivated", &e))?,
         controller_public_key_hex,
-        version: view.version().map_err(|e| decode_err("version", &e))?,
-        operation_count: view.operation_count().map_err(|e| decode_err("operationCount", &e))?,
-        contract_version: u64::from(view.contract_version().map_err(|e| decode_err("contractVersion", &e))?),
-        created_ms: view.created().map_err(|e| decode_err("created", &e))?,
-        updated_ms: view.updated().map_err(|e| decode_err("updated", &e))?,
+        version: view.version().map_err(|e| decode_err("version", &e))?.value() as u64,
+        operation_count: view
+            .operationCount()
+            .map_err(|e| decode_err("operationCount", &e))?
+            .value() as u64,
+        contract_version: view
+            .contractVersion()
+            .map_err(|e| decode_err("contractVersion", &e))?
+            .value() as u64,
+        created_ms: view.created().map_err(|e| decode_err("created", &e))?.value() as u64,
+        updated_ms: view.updated().map_err(|e| decode_err("updated", &e))?.value() as u64,
         also_known_as: collections.string_set(slot::ALSO_KNOWN_AS, "alsoKnownAs")?,
         verification_methods: collections.verification_methods()?,
         schnorr_jubjub_verification_methods: collections.schnorr_jubjub_verification_methods()?,
@@ -146,7 +152,7 @@ pub fn snapshot_from_bytes(bytes: &[u8]) -> Result<DidLedgerSnapshot, BackendErr
 /// `[0]` (fields 0–3) is validated for shape but read only through the
 /// generated accessors.
 struct StateChunks<'a> {
-    chunk1: &'a midnight_compact_runtime::Array<StateValue<DefaultDB>, DefaultDB>,
+    chunk1: &'a LedgerArray<StateValue<DefaultDB>, DefaultDB>,
 }
 
 impl<'a> StateChunks<'a> {
@@ -181,7 +187,7 @@ impl<'a> StateChunks<'a> {
 
 /// Borrow of the `[1]` chunk (fields 4–18) of the outer state array.
 struct CollectionSlots<'a> {
-    inner: &'a midnight_compact_runtime::Array<StateValue<DefaultDB>, DefaultDB>,
+    inner: &'a LedgerArray<StateValue<DefaultDB>, DefaultDB>,
 }
 
 impl CollectionSlots<'_> {
@@ -383,8 +389,12 @@ fn variant_name(sv: &StateValue<DefaultDB>) -> &'static str {
 
 /// Map keys are `Opaque<"string">` cells: raw UTF-8 bytes.
 fn key_string(key: &AlignedValue, field: &str) -> Result<String, BackendError> {
-    let bytes =
-        aligned_bytes(key).ok_or_else(|| BackendError::Decode(format!("field {field}: key has no byte payload")))?;
+    let bytes = key
+        .value
+        .0
+        .first()
+        .map(|atom| atom.0.as_slice())
+        .ok_or_else(|| BackendError::Decode(format!("field {field}: key has no byte payload")))?;
     String::from_utf8(bytes.to_vec()).map_err(|e| BackendError::Decode(format!("field {field}: key is not UTF-8: {e}")))
 }
 
@@ -452,10 +462,32 @@ fn curve_type(d: u8) -> Result<CurveType, BackendError> {
 
 #[cfg(test)]
 mod tests {
-    use midnight_compact_runtime::{Alignment, AlignmentAtom, Map, Value, ValueAtom, new_array, new_cell, new_map};
+    use midnight_base_crypto::fab::ValueAtom;
+    use midnight_compact_runtime::fab::{Alignment, AlignmentAtom, Value};
+    use midnight_compact_runtime::ledger::{LedgerHashMap, constructor_cell, constructor_map};
 
     use super::*;
-    use crate::contract as generated;
+    use crate::types as generated;
+
+    fn new_cell<D: midnight_compact_runtime::ledger::DB, T>(value: T) -> StateValue<D>
+    where
+        T: midnight_compact_runtime::ledger::CellValue,
+    {
+        constructor_cell(value)
+    }
+
+    fn new_array<D: midnight_compact_runtime::ledger::DB>(values: Vec<StateValue<D>>) -> StateValue<D> {
+        StateValue::Array(values.into())
+    }
+
+    fn new_map<D: midnight_compact_runtime::ledger::DB>() -> StateValue<D> {
+        constructor_map()
+    }
+
+    fn generator() -> JubjubPoint {
+        midnight_compact_runtime::ec_mul_generator(midnight_compact_runtime::Field::from(1u64))
+            .expect("generator is valid")
+    }
 
     /// Extract the `AlignedValue` out of a `StateValue::Cell`.
     fn cell_av(sv: &StateValue<DefaultDB>) -> AlignedValue {
@@ -471,7 +503,7 @@ mod tests {
     fn with_mutated_atom(sv: &StateValue<DefaultDB>, index: usize, bytes: Vec<u8>) -> StateValue<DefaultDB> {
         let mut av = cell_av(sv);
         av.value.0[index] = ValueAtom(bytes);
-        new_cell::<DefaultDB, _>(av)
+        StateValue::from(av)
     }
 
     /// Build a chain-shaped (nested `[4][15]`) DID contract state the way
@@ -500,7 +532,7 @@ mod tests {
     fn sample_sjvm_cell() -> StateValue<DefaultDB> {
         new_cell(generated::SchnorrJubjubVerificationMethod {
             id: "#key-jub".to_string().into(),
-            publicKey: JubjubPoint::generator(),
+            publicKey: generator(),
         })
     }
 
@@ -513,7 +545,7 @@ mod tests {
     }
 
     fn opaque_key(s: &str) -> AlignedValue {
-        let sv = new_cell::<DefaultDB, _>(midnight_compact_runtime::std_lib::OpaqueString(s.to_string()));
+        let sv = new_cell::<DefaultDB, _>(midnight_compact_runtime::OpaqueString(s.to_string()));
         cell_av(&sv)
     }
 
@@ -522,7 +554,7 @@ mod tests {
     }
 
     fn raw_map_of(entries: Vec<(AlignedValue, StateValue<DefaultDB>)>) -> StateValue<DefaultDB> {
-        let mut m: Map<AlignedValue, StateValue<DefaultDB>, DefaultDB> = Map::new();
+        let mut m: LedgerHashMap<AlignedValue, StateValue<DefaultDB>, DefaultDB> = LedgerHashMap::new();
         for (k, v) in entries {
             m = m.insert(k, v);
         }
@@ -537,17 +569,19 @@ mod tests {
     fn chain_state_with(
         mutate: impl FnOnce(&mut Vec<StateValue<DefaultDB>>, &mut Vec<StateValue<DefaultDB>>),
     ) -> ChargedState<DefaultDB> {
-        let point = JubjubPoint::generator();
+        let point = generator();
         let vm = sample_vm_cell();
         let sjvm = sample_sjvm_cell();
         let service = sample_service_cell();
 
         // chunk [0]: fields 0..4
         let mut chunk0 = vec![
-            new_cell(2u32),                                            // contractVersion
-            new_cell(point),                                           // controllerPublicKey
-            new_cell(point),                                           // recoveryAuthorityPublicKey
-            new_cell(generated::ContractAddress { bytes: [7u8; 32] }), // id
+            new_cell(2u32),  // contractVersion
+            new_cell(point), // controllerPublicKey
+            new_cell(point), // recoveryAuthorityPublicKey
+            new_cell(generated::ContractAddress {
+                bytes: midnight_compact_runtime::FixedBytes([7u8; 32]),
+            }), // id
         ];
         // chunk [1]: fields 4..19
         let mut chunk1 = vec![
@@ -586,7 +620,7 @@ mod tests {
         assert_eq!(snap.updated_ms, 1_700_000_100_000);
 
         // controller key: x coordinate of the generator, LE hex, 64 chars.
-        let gen_x = JubjubPoint::generator().x().expect("generator has coordinates");
+        let gen_x = generator().x().expect("generator has coordinates");
         let mut gen_x_bytes = gen_x.as_le_bytes();
         gen_x_bytes.resize(32, 0);
         assert_eq!(snap.controller_public_key_hex, hex::encode(gen_x_bytes));
@@ -625,10 +659,7 @@ mod tests {
     fn flat_state_is_rejected_with_layout_error() {
         // The A29 flat scaffold shape: outer array whose [1] is a Cell,
         // not the [1] chunk. Must fail loudly, not mis-decode.
-        let flat = ChargedState::new(new_array::<DefaultDB>(vec![
-            new_cell(2u32),
-            new_cell(JubjubPoint::generator()),
-        ]));
+        let flat = ChargedState::new(new_array::<DefaultDB>(vec![new_cell(2u32), new_cell(generator())]));
         let err = decode_ledger_snapshot(&flat).expect_err("flat layout must fail");
         assert!(matches!(err, BackendError::Decode(_)), "got {err:?}");
     }

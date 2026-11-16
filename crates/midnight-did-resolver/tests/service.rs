@@ -25,8 +25,8 @@ use midnight_did_resolver::error::ResolutionErrorCode;
 use midnight_did_resolver::{ResolverConfig, ResolverService};
 use serde_json::{Value, json};
 
-const STATE_HEX: &str = include_str!("fixtures/state-050-enriched.hex");
-const ADDR: &str = include_str!("fixtures/state-050-enriched.addr");
+const STATE_HEX: &str = include_str!("fixtures/state-ledger9-enriched.hex");
+const ADDR: &str = include_str!("fixtures/state-ledger9-enriched.addr");
 
 fn fixture_addr() -> String {
     ADDR.trim().to_string()
