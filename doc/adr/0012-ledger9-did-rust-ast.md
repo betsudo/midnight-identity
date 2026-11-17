@@ -46,6 +46,10 @@ The migration is DID-only:
 - `LiveBackend` accepts provider ports that must execute generated code and
   construct a real positive-fee Ledger 9 transaction. A `DidContractCall`
   envelope is never itself a production transaction;
+- the Ledger 8-specific wallet, proof, node, transaction, and generated-executor
+  DTOs are removed from the public runtime API. `Ledger9DidProvider` is the
+  documented Ledger 9 replacement boundary; a concrete funded implementation
+  remains tracked by issue #9;
 - VC and Passport retain their existing compiler/runtime evidence. Their
   contracts, package pins, and behavior are unchanged; the two committed VC
   Rust bindings receive only the import-order normalization produced by the

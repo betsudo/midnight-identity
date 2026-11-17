@@ -2,7 +2,25 @@
 
 SPDX-License-Identifier: Apache-2.0
 
-## Implemented shape in this worktree
+## Current Ledger 9 status
+
+The DID runtime now targets the exact Ledger 9.1.0.2 graph recorded in
+[ADR 0012](../adr/0012-ledger9-did-rust-ast.md). `LiveBackend` has no
+production `todo!()` paths: it delegates deployment and generated DID calls to
+an injected `Ledger9DidProvider`, delegates reads and finality reconciliation
+to an injected `LedgerIndexerProvider`, retains durable finality receipts when
+reconciliation fails, and decodes Indexer API v4 state into
+`DidLedgerSnapshot`.
+
+There is not yet a concrete Ledger 9 custody/wallet/proof/node provider in this
+repository. The provider contract requires generated-circuit execution,
+positive-fee balancing, proving, submission, finality, and independent indexer
+reconciliation, but generated-code, recording-backend, and service protocol
+tests do not establish that funded live lifecycle. The historical Ledger 8
+implementation below therefore remains evidence for PR #101 only; its types,
+pins, and validation receipts are not the current Ledger 9 runtime contract.
+
+## Historical PR #101 Ledger 8 implementation
 
 `midnight-did-runtime::LiveBackend` is dependency-injected. Mutating calls run:
 

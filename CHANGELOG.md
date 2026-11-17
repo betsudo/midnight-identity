@@ -24,7 +24,10 @@ and the project adheres to [SemVer](https://semver.org/).
   `midnight-storage=3.1.0` removes `sysinfo`
   from the normal dependency cone, restoring iOS-simulator and Android checks;
   VC and Passport remain intentionally isolated on their qualified Ledger 8
-  graph.
+  graph. This is a public runtime migration: Ledger 8-specific wallet, proof,
+  node, transaction, and generated-executor DTOs are removed in favor of the
+  `Ledger9DidProvider` execution boundary. A concrete funded Ledger 9 provider
+  is still tracked by issue #9 and is not claimed by this release candidate.
 
 - **Ledger 9 localnet ownership and attachment (issue #107)** — the repo-owned
   standalone Compose profile now pins the Ledger 9 node, Indexer v4, and proof
