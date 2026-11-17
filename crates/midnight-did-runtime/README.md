@@ -91,7 +91,7 @@ builds may opt into the already materialised Nix sources without changing any
 published manifest:
 
 ```console
-scripts/cargo-with-nix-overrides.sh check -p midnight-did-runtime --features http,node-subxt
+scripts/cargo-with-nix-overrides.sh check -p midnight-did-runtime --features ledger-transaction
 ```
 
 The wrapper substitutes only the exact Compact runtime source. Released Ledger

@@ -11,6 +11,8 @@ import { fileURLToPath } from "node:url";
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const ledgerRevision = "8655615e7c4cbf3a1187b3203bf72e69dc09b8dc";
 const compactRevision = "32e314770da10cc62dab30dcfeb340ec4c6bcb64";
+const didCompactRevision = "7a4fab772ee34c19053ce293d08052b501ce4b50";
+const ledger9Revision = "a2b30128ca4b660b73a068e29b56b48ede8c9a74";
 const proofsRevision = "532629b044a88473a7175f4a96c2511c91156136";
 const ledgerVersions = new Map([
   ["midnight-base-crypto", "1.0.1"],
@@ -75,12 +77,22 @@ test("Nix pins the same immutable sources and exposes only opt-in Cargo override
     flake,
     new RegExp(`compact-runtime\\s*=\\s*\\{[\\s\\S]*?rev\\s*=\\s*"${compactRevision}"`, "u"),
   );
+  assert.match(
+    flake,
+    new RegExp(`midnight-ledger-v9\\s*=\\s*\\{[\\s\\S]*?rev\\s*=\\s*"${ledger9Revision}"`, "u"),
+  );
+  for (const input of ["compact-runtime-did", "compact-did"]) {
+    assert.match(
+      flake,
+      new RegExp(`${input}\\s*=\\s*\\{[\\s\\S]*?rev\\s*=\\s*"${didCompactRevision}"`, "u"),
+    );
+  }
   assert.match(flake, new RegExp(`rev\\s*=\\s*"${proofsRevision}"`, "u"));
   assert.match(rustTools, /"aarch64-apple-ios-sim"/u);
-  assert.match(wrapper, /patch\.crates-io/u);
-  assert.match(wrapper, /patch\.\\"https:\/\/github\.com\/MediaNoxLabs\/midnight-ledger\.git\\"/u);
-  assert.match(wrapper, /patch\.\\"https:\/\/github\.com\/MediaNoxLabs\/compact\.git\\"/u);
-  for (const crate of ledgerCrates) assert.match(wrapper, new RegExp(escaped(crate), "u"));
+  assert.match(wrapper, /third_party\/compact-did/u);
+  assert.match(wrapper, /paths=\[/u);
+  assert.doesNotMatch(wrapper, /patch\.crates-io/u);
+  assert.doesNotMatch(wrapper, /third_party\/midnight-ledger/u);
 });
 
 test("clean external-consumer smoke is wired into CI and documents its supported cone", async () => {
@@ -94,20 +106,25 @@ test("clean external-consumer smoke is wired into CI and documents its supported
   assert.match(script, /cargo metadata/u);
   assert.match(script, /cargo check/u);
   assert.match(script, /midnight-did-runtime/u);
-  assert.match(script, /features\s*=\s*\[\s*"http"\s*,\s*"node-subxt"\s*\]/u);
-  assert.match(script, new RegExp(ledgerRevision, "u"));
-  assert.match(script, new RegExp(proofsRevision, "u"));
+  assert.match(script, /features\s*=\s*\[\s*"ledger-transaction"\s*\]/u);
+  assert.match(script, new RegExp(didCompactRevision, "u"));
+  for (const [name, version] of [
+    ["midnight-ledger-v9", "1.0.1"],
+    ["midnight-proofs", "0.8.2"],
+    ["midnight-storage", "3.0.0"],
+    ["midnight-zk-stdlib", "2.4.0"],
+  ]) {
+    assert.match(script, new RegExp(`${escaped(name)}\\s+${escaped(version)}`, "u"));
+  }
   assert.match(workflow, /bash scripts\/ci\/git-consumer-smoke\.sh/u);
   assert.match(workflow, /--target aarch64-apple-ios-sim/u);
   assert.match(workflow, /xcrun --sdk iphonesimulator --show-sdk-path/u);
   for (const phrase of [
     "Immutable Git consumption",
     "default feature set is empty",
-    "`http`",
-    "`node-subxt`",
-    "Cargo does not inherit `[patch]` tables",
-    compactRevision,
-    proofsRevision,
+    "`ledger-transaction`",
+    "Git resolution is the portable default",
+    didCompactRevision,
     "cargo-with-nix-overrides.sh",
   ]) assert.ok(documentation.includes(phrase), phrase);
 });
