@@ -59,8 +59,17 @@ of this repository:
 [dependencies]
 midnight-did-runtime = {
   git = "https://github.com/MediaNoxLabs/midnight-identity.git",
-  rev = "<immutable-midnight-identity-revision>"
+  rev = "<immutable-midnight-identity-revision>",
+  features = ["ledger-transaction"]
 }
+
+# Temporary application-root source contract for the Ledger 9 proof cohort.
+# Cargo does not propagate a library's [patch] table to its consumers.
+[patch.crates-io]
+midnight-circuits-ledger9 = { package = "midnight-circuits", version = "=7.3.0", git = "https://github.com/betsudo/midnight-zk", rev = "0f9d5c3879f92a8beae8bdb9e7305f39e03a3227" }
+midnight-curves-ledger9 = { package = "midnight-curves", version = "=0.3.1", git = "https://github.com/betsudo/midnight-zk", rev = "0f9d5c3879f92a8beae8bdb9e7305f39e03a3227" }
+midnight-proofs-ledger9 = { package = "midnight-proofs", version = "=0.8.2", git = "https://github.com/betsudo/midnight-zk", rev = "0f9d5c3879f92a8beae8bdb9e7305f39e03a3227" }
+midnight-zk-stdlib-ledger9 = { package = "midnight-zk-stdlib", version = "=2.4.0", git = "https://github.com/betsudo/midnight-zk", rev = "0f9d5c3879f92a8beae8bdb9e7305f39e03a3227" }
 ```
 
 The DID runtime pins the signed Rust AST compiler/runtime source to
@@ -95,9 +104,14 @@ The standalone probe discovers an already-running shared Ledger 9 stack via
 endpoint. Only its designated owner may invoke `up` or `down`; owner `up`
 attaches first and will not start a duplicate compatible stack.
 
-Git resolution is the portable default. Inside `nix develop .#rust`, local
-builds may opt into the already materialised Nix sources without changing any
-published manifest:
+Immutable Git resolution plus the explicit application-root ZK patch table is
+the portable external-consumer contract. The patch is required because the
+currently published `blake2b_halo2` and `sha3-circuit` helpers request
+`midnight-curves` and `midnight-proofs` from crates.io, while the Ledger 9
+runtime must use the coordinated Git cohort. Remove it only after those helper
+releases carry the same source graph. Inside `nix develop .#rust`, local builds
+may opt into already materialised Nix sources without changing any published
+manifest:
 
 ```console
 scripts/cargo-with-nix-overrides.sh check -p midnight-did-runtime --features ledger-transaction

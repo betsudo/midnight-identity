@@ -83,7 +83,13 @@ graph incorporates the storage correction from `betsudo/midnight-ledger#42`:
 to `stress-test`. Consequently the DID runtime dependency cone is checked for
 both `aarch64-apple-ios-sim` and `aarch64-linux-android` using Rust 1.99. The
 external-consumer smoke test proves that a fresh Git consumer receives the
-same immutable graph; it does not rely on a downstream-invisible local patch.
+same immutable graph when the consumer root supplies the documented exact ZK
+patch table. This application-root contract is necessary because Cargo does
+not propagate a dependency's `[patch.crates-io]` table and the currently
+published `blake2b_halo2` and `sha3-circuit` helpers otherwise select registry
+copies of `midnight-curves` and `midnight-proofs`. The contract is temporary:
+remove it only after those helper releases carry the coordinated Ledger 9
+source graph.
 
 The 2026-11-16 local arm64 receipt passed exact DID regeneration, workspace
 formatting, lint with warnings denied, all repository tests (678 first-party

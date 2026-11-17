@@ -55,6 +55,16 @@ publish = false
 
 [dependencies]
 midnight-did-runtime = { git = "$repository_url", rev = "$revision", features = ["ledger-transaction"] }
+
+# The current published blake2b_halo2/sha3-circuit helpers request the proof
+# cohort from crates.io. Cargo patches are scoped to the consumer root, so an
+# application must carry these exact pins until those helpers publish the
+# coordinated Ledger 9 source graph.
+[patch.crates-io]
+midnight-circuits-ledger9 = { package = "midnight-circuits", version = "=7.3.0", git = "https://github.com/betsudo/midnight-zk", rev = "$zk_revision" }
+midnight-curves-ledger9 = { package = "midnight-curves", version = "=0.3.1", git = "https://github.com/betsudo/midnight-zk", rev = "$zk_revision" }
+midnight-proofs-ledger9 = { package = "midnight-proofs", version = "=0.8.2", git = "https://github.com/betsudo/midnight-zk", rev = "$zk_revision" }
+midnight-zk-stdlib-ledger9 = { package = "midnight-zk-stdlib", version = "=2.4.0", git = "https://github.com/betsudo/midnight-zk", rev = "$zk_revision" }
 EOF
 printf 'fn main() {}\n' > "$scratch/src/main.rs"
 
@@ -159,9 +169,17 @@ assert_version_source midnight-transient-crypto 2.2.0 betsudo/midnight-ledger "$
 assert_version_source midnight-transient-crypto 3.1.0 betsudo/midnight-ledger "$ledger_revision"
 assert_version_source midnight-zkir 2.2.0 betsudo/midnight-ledger "$ledger_revision"
 
-for package in midnight-circuits midnight-curves midnight-proofs midnight-zk-stdlib; do
-  assert_single_source "$package" betsudo/midnight-zk "$zk_revision"
-done
+while read -r package version; do
+  # Ledger retains an older private proof cohort for its v2 implementation
+  # boundary. Assert the active Ledger 9 versions rather than rejecting those
+  # intentional legacy package versions by name alone.
+  assert_version_source "$package" "$version" betsudo/midnight-zk "$zk_revision"
+done <<'ZK_VERSIONS'
+midnight-circuits 7.3.0
+midnight-curves 0.3.1
+midnight-proofs 0.8.2
+midnight-zk-stdlib 2.4.0
+ZK_VERSIONS
 
 if jq -e --arg revision "$zkir_revision" \
   '.packages[] | select(.name == "midnight-zkir" and ((.source // "") | contains($revision)))' \

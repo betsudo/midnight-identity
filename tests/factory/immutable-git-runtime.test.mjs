@@ -151,7 +151,14 @@ test("clean external-consumer smoke is wired into CI and documents its supported
   assert.match(script, /cargo check/u);
   assert.match(script, /midnight-did-runtime/u);
   assert.match(script, /features\s*=\s*\[\s*"ledger-transaction"\s*\]/u);
+  assert.match(script, /\[patch\.crates-io\]/u);
   assert.match(script, new RegExp(didCompactRevision, "u"));
+  for (const name of [
+    "midnight-circuits-ledger9",
+    "midnight-curves-ledger9",
+    "midnight-proofs-ledger9",
+    "midnight-zk-stdlib-ledger9",
+  ]) assert.match(script, new RegExp(escaped(name), "u"));
   for (const [name, version] of [
     ["midnight-ledger-v9", "1.0.2"],
     ["midnight-proofs", "0.8.2"],
@@ -170,7 +177,8 @@ test("clean external-consumer smoke is wired into CI and documents its supported
     "Immutable Git consumption",
     "default feature set is empty",
     "`ledger-transaction`",
-    "Git resolution is the portable default",
+    "explicit application-root ZK patch table",
+    "Cargo does not propagate a library's [patch] table",
     didCompactRevision,
     "cargo-with-nix-overrides.sh",
   ]) assert.ok(documentation.includes(phrase), phrase);
