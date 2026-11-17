@@ -55,6 +55,12 @@ impl ResolverService {
         did: &str,
         indexer_override: Option<&str>,
     ) -> Result<ResolvedMidnightDid, ResolutionError> {
+        if self.config.timeout_ms == 0 {
+            return Err(ResolutionError::new(
+                ResolutionErrorCode::InternalError,
+                "resolution timed out after 0ms",
+            ));
+        }
         let fut = self.resolve_inner(did, indexer_override);
         match tokio::time::timeout(std::time::Duration::from_millis(self.config.timeout_ms), fut).await {
             Ok(result) => result,

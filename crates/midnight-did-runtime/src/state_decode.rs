@@ -91,14 +91,9 @@ pub fn decode_ledger_snapshot(state: &ChargedState<DefaultDB>) -> Result<DidLedg
     let view = PublicStateView::from(state.get_ref());
     let chunks = StateChunks::from_state(state)?;
 
-    // Through the generated accessor: A30 (compact 0.31.110) made
-    // `decode_via_field_repr` alignment-aware, including normalize-stripped
-    // all-zero Bytes<32> cells (re-padded from the alignment's declared
-    // length). An earlier failure here was a stale pre-A30 `midnight-compact-runtime`
-    // rlib — the path dep keeps version 0.16.100 across pin bumps and
-    // nix-store epoch mtimes defeat cargo's fingerprinting, so `cargo clean
-    // -p midnight-compact-runtime` is required after compact pin syncs
-    // (MediaNoxLabs/compact#15 has the full diagnosis).
+    // The generated accessor is alignment-aware, including
+    // normalize-stripped all-zero Bytes<32> cells, which it re-pads from
+    // the alignment's declared length.
     let id_hex = hex::encode(view.id().map_err(|e| decode_err("id", &e))?.bytes.0);
     let controller_public_key_hex = jubjub_x_hex(
         &view
@@ -389,12 +384,16 @@ fn variant_name(sv: &StateValue<DefaultDB>) -> &'static str {
 
 /// Map keys are `Opaque<"string">` cells: raw UTF-8 bytes.
 fn key_string(key: &AlignedValue, field: &str) -> Result<String, BackendError> {
-    let bytes = key
-        .value
-        .0
-        .first()
-        .map(|atom| atom.0.as_slice())
-        .ok_or_else(|| BackendError::Decode(format!("field {field}: key has no byte payload")))?;
+    let bytes = match key.value.0.as_slice() {
+        [atom] => atom.0.as_slice(),
+        [] => return Err(BackendError::Decode(format!("field {field}: key has no byte payload"))),
+        atoms => {
+            return Err(BackendError::Decode(format!(
+                "field {field}: expected a single key atom, got {}",
+                atoms.len()
+            )));
+        }
+    };
     String::from_utf8(bytes.to_vec()).map_err(|e| BackendError::Decode(format!("field {field}: key is not UTF-8: {e}")))
 }
 
@@ -774,6 +773,24 @@ mod tests {
         assert_decode_err(
             decode_ledger_snapshot(&state),
             "field verificationMethods: key is not UTF-8",
+        );
+    }
+
+    #[test]
+    fn multi_atom_map_key_is_rejected() {
+        let first = Alignment::singleton(AlignmentAtom::Bytes { length: 6 });
+        let second = Alignment::singleton(AlignmentAtom::Bytes { length: 6 });
+        let bad_key = AlignedValue::new(
+            Value(vec![ValueAtom(b"#key-1".to_vec()), ValueAtom(b"suffix".to_vec())]),
+            Alignment::concat([&first, &second]),
+        )
+        .expect("two atoms fit their declared alignment");
+        let state = chain_state_with(move |_, chunk1| {
+            chunk1[slot::VERIFICATION_METHODS] = raw_map_of(vec![(bad_key, sample_vm_cell())]);
+        });
+        assert_decode_err(
+            decode_ledger_snapshot(&state),
+            "field verificationMethods: expected a single key atom, got 2",
         );
     }
 
