@@ -11,6 +11,7 @@ import { fileURLToPath } from "node:url";
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const ledgerRevision = "8655615e7c4cbf3a1187b3203bf72e69dc09b8dc";
 const compactRevision = "32e314770da10cc62dab30dcfeb340ec4c6bcb64";
+const didRevision = "750268664278c162e9171406983dc45f24bb5be7";
 const didCompactRevision = "d6513a24debac14d43a8199460d9dc2c6d9af2b1";
 const ledger9Revision = "6fbc2e3900845a858f70eebf8a0deab1d4d3c0d6";
 const ledger9ZkRevision = "bca8db4d9e2c1ecaa5d1db5ba7a201935b6c6c8a";
@@ -103,6 +104,20 @@ test("the obsolete downstream Ledger source-lock shim stays removed", async () =
   ]);
   assert.doesNotMatch(rootManifest, /midnight-ledger-source-lock/u);
   assert.doesNotMatch(runtimeManifest, /midnight-ledger-source-lock/u);
+});
+
+test("generated DID ZKIR provenance names the exact Ledger 9 source graph", async () => {
+  const provenance = await readFile(
+    path.join(root, "crates", "midnight-did-runtime", "assets", "keys", "README.md"),
+    "utf8",
+  );
+  for (const revision of [didRevision, didCompactRevision, ledger9Revision, ledger9ZkRevision, ledger9ZkirRevision]) {
+    assert.match(provenance, new RegExp(revision, "u"));
+  }
+  assert.match(provenance, /rust-compatibility\.json/u);
+  assert.match(provenance, /--skip-zk/u);
+  assert.doesNotMatch(provenance, /42a8e4aca1c6043f7f2b73463fa3aa3cd3d48b06/u);
+  assert.doesNotMatch(provenance, /55ba765f5484a47d9184824a619f93893448c740/u);
 });
 
 test("Nix pins the same immutable sources and exposes only opt-in Cargo overrides", async () => {
