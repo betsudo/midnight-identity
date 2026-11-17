@@ -142,8 +142,10 @@ test("clean external-consumer smoke is wired into CI and documents its supported
   ]);
   await access(path.join(root, "scripts", "cargo-with-nix-overrides.sh"));
   assert.match(script, /mktemp/u);
-  assert.match(script, /cargo \+1\.99\.0 metadata/u);
-  assert.match(script, /cargo \+1\.99\.0 check/u);
+  assert.match(script, /rustup run 1\.99\.0 cargo/u);
+  assert.match(script, /active_rustc.*rustc --version/u);
+  assert.match(script, /"\$\{cargo_1_99\[@\]\}" metadata/u);
+  assert.match(script, /"\$\{cargo_1_99\[@\]\}" check/u);
   assert.match(script, /midnight-did-runtime/u);
   assert.match(script, /features\s*=\s*\[\s*"ledger-transaction"\s*\]/u);
   assert.doesNotMatch(script, /\[patch\.crates-io\]/u);

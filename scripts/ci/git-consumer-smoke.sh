@@ -60,7 +60,24 @@ printf 'fn main() {}\n' > "$scratch/src/main.rs"
 
 metadata="$scratch/metadata.json"
 consumer_target=${GIT_CONSUMER_TARGET_DIR:-$scratch/target}
-CARGO_TARGET_DIR="$consumer_target" cargo +1.99.0 metadata \
+
+# `cargo +toolchain` only works when `cargo` is the rustup proxy. The CI Nix
+# shell already supplies the repository's Rust 1.99 toolchain, but its Cargo is
+# a direct binary. Prefer an installed rustup toolchain for local callers and
+# otherwise require the active Nix toolchain to be exactly the supported MSRV.
+cargo_1_99=(cargo)
+if command -v rustup >/dev/null 2>&1 \
+  && rustup run 1.99.0 rustc --version >/dev/null 2>&1; then
+  cargo_1_99=(rustup run 1.99.0 cargo)
+else
+  active_rustc=$(rustc --version)
+  if [[ "$active_rustc" != "rustc 1.99.0 "* ]]; then
+    echo "Git consumer smoke requires Rust 1.99.0; active toolchain: $active_rustc" >&2
+    exit 1
+  fi
+fi
+
+CARGO_TARGET_DIR="$consumer_target" "${cargo_1_99[@]}" metadata \
   --format-version 1 \
   --manifest-path "$scratch/Cargo.toml" > "$metadata"
 
@@ -193,5 +210,5 @@ if jq -e '.packages[] | select(.name == "midnight-did-uniffi")' "$metadata" >/de
   exit 1
 fi
 
-CARGO_TARGET_DIR="$consumer_target" cargo +1.99.0 check \
+CARGO_TARGET_DIR="$consumer_target" "${cargo_1_99[@]}" check \
   --manifest-path "$scratch/Cargo.toml"
