@@ -12,9 +12,10 @@ two different compiler products and their version banners must not be treated
 as interchangeable.
 
 The exact Rust source used here is signed commit
-`7a4fab772ee34c19053ce293d08052b501ce4b50` from
-`MediaNoxLabs/compact`. It emits runtime ABI 54, IR schema 20, Rust 1.99, and
-the Ledger 9.1.0.1 compatibility matrix recorded in
+`05c9ed69b891baa4f15777403c9bdc8bc86c150c` from
+`betsudo/compact`. It identifies Compact 0.31.215, language 0.28.0,
+TypeScript runtime 0.18.0, runtime ABI 54, IR schema 20, Rust 1.99, and
+the Ledger 9.1.0.2 compatibility matrix recorded in
 `crates/midnight-did-runtime/assets/rust-compatibility.json`.
 
 ## Decision
@@ -24,9 +25,16 @@ The migration is DID-only:
 - generated DID Rust and all twelve ZKIR sources are regenerated from the
   v1.0.0-rc1 contract source;
 - the DID runtime uses `midnight-compact-runtime` 0.2.0 from the exact compiler
-  revision and released `midnight-ledger-v9=1.0.1` dependencies;
-- ZKIR sources are parsed with `midnight-zkir=3.2.1`; the release cohort was
-  qualified with the compatible ZKIR 3.2 line;
+  revision and a single coordinated source graph at
+  `betsudo/midnight-ledger@f82ac287442fc15c4eb79f02dcb6510373979eab`
+  plus `betsudo/midnight-zk@0f9d5c3879f92a8beae8bdb9e7305f39e03a3227`;
+- that graph supplies `midnight-ledger-v9=1.0.2`,
+  `midnight-storage=3.1.0`, and `midnight-transient-crypto=3.1.0` without
+  mixing registry copies of the same Ledger 9 packages;
+- ZKIR sources are parsed with `midnight-zkir=3.2.1` from
+  `betsudo/midnight-zkir@35e386b7b3f3a76117423ca72883c852181104dc`;
+  the Ledger-private ZKIR v2 boundary remains `2.2.0` at the same Ledger
+  revision and never crosses the DID crate API;
 - generated code is included at crate root because its references are
   intentionally crate-root-relative, while `contract` preserves a namespaced
   re-export;
@@ -68,25 +76,14 @@ or native Linux release. A concrete `Ledger9DidProvider` must still supply
 custody, proving keys, positive-fee balancing, proof generation, node finality,
 and independent indexer reconciliation before live support is claimed.
 
-The repository's WASM-clean crates compile on `wasm32-unknown-unknown`. The DID
-runtime itself does not yet qualify for `aarch64-apple-ios-sim`: released
-`midnight-storage=3.0.0` unconditionally enables `sysinfo=0.39.6`, whose Apple
-backend imports macOS-only libc symbols when built for iOS. This is an upstream
-dependency-cone blocker, not a generated DID contract failure.
-
-The storage correction was merged as Betsudo commit
-`5df208e7cc6d20e7aba312bdf346892e606d3907` by
-`betsudo/midnight-ledger#40` on the qualified Ledger 9.1.0.1 integration line.
-It removes the unused dependency from `midnight-storage-core` and gates the
-storage crate's copy behind `stress-test`. The same correction is being
-forward-ported to the Ledger 9.1.0.2 integration line by
-`betsudo/midnight-ledger#42`. With the complete storage boundary locally pinned
-to one corrected revision, the DID runtime compiles for both
-`aarch64-apple-ios-sim` and `aarch64-linux-android` using Rust 1.99. A workspace
-`[patch.crates-io]` is not inherited by downstream Git consumers, however, so
-this repository must not claim or commit that local-only workaround. Adopt a
-corrected published storage release, or a coordinated single-source Ledger
-graph, before restoring the mobile claim.
+The repository's WASM-clean crates compile on `wasm32-unknown-unknown`; the DID
+runtime remains a native-only crate. The coordinated Ledger 9.1.0.2 source
+graph incorporates the storage correction from `betsudo/midnight-ledger#42`:
+`midnight-storage=3.1.0` excludes `sysinfo` from normal builds and confines it
+to `stress-test`. Consequently the DID runtime dependency cone is checked for
+both `aarch64-apple-ios-sim` and `aarch64-linux-android` using Rust 1.99. The
+external-consumer smoke test proves that a fresh Git consumer receives the
+same immutable graph; it does not rely on a downstream-invisible local patch.
 
 The 2026-11-16 local arm64 receipt passed exact DID regeneration, workspace
 formatting, lint with warnings denied, all repository tests (678 first-party
@@ -98,10 +95,12 @@ repository's nightly-only import grouping options are ignored; the committed
 bindings now include that two-line formatting normalization so local and hosted
 drift checks agree.
 
-Native Linux and a fresh proof-backed, positive-fee standalone transaction are
-still required release qualifications. Of the twelve exported stateful
-circuits, all ZKIR v3 sources parse, while only `setAlsoKnownAs` has been
-executed end-to-end through the generated Rust VM in this trial.
+Native Linux remains a hosted qualification. A fresh proof receipt on the
+matching Compact source qualifies `deactivate` with a distinct positive fee,
+independent verification, state application, and replay refusal. Of the twelve
+exported stateful circuits, all ZKIR v3 sources parse and the repository also
+executes `setAlsoKnownAs` through the generated Rust VM; the other circuits are
+compile/lifecycle-qualified only and are not claimed as proof-qualified.
 
 ## Rollback
 

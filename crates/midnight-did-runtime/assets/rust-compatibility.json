@@ -8,20 +8,93 @@
       "midnight-circuits": "=7.3.0",
       "midnight-coin-structure": "=3.0.1",
       "midnight-curves": "=0.3.1",
-      "midnight-ledger-v9": "=1.0.1",
+      "midnight-ledger-v9": "=1.0.2",
       "midnight-onchain-runtime": "=4.0.1",
       "midnight-onchain-state": "=4.0.1",
       "midnight-onchain-vm": "=4.0.1",
       "midnight-proofs": "=0.8.2",
       "midnight-serialize": "=1.2.1",
-      "midnight-storage": "=3.0.0",
+      "midnight-storage": "=3.1.0",
       "midnight-storage-core": "=1.2.3",
-      "midnight-transient-crypto": "=3.0.1",
+      "midnight-transient-crypto": "=3.1.0",
       "midnight-zk-stdlib": "=2.4.0",
       "midnight-zswap": "=9.0.1"
     },
-    "ledger_git_sources": {},
-    "ledger_version": "ledger-9.1.0.1",
+    "ledger_git_sources": {
+      "midnight-base-crypto": {
+        "git": "https://github.com/betsudo/midnight-ledger",
+        "rev": "f82ac287442fc15c4eb79f02dcb6510373979eab"
+      },
+      "midnight-circuits": {
+        "git": "https://github.com/betsudo/midnight-zk",
+        "rev": "0f9d5c3879f92a8beae8bdb9e7305f39e03a3227"
+      },
+      "midnight-coin-structure": {
+        "git": "https://github.com/betsudo/midnight-ledger",
+        "rev": "f82ac287442fc15c4eb79f02dcb6510373979eab"
+      },
+      "midnight-curves": {
+        "git": "https://github.com/betsudo/midnight-zk",
+        "rev": "0f9d5c3879f92a8beae8bdb9e7305f39e03a3227"
+      },
+      "midnight-ledger-v9": {
+        "git": "https://github.com/betsudo/midnight-ledger",
+        "rev": "f82ac287442fc15c4eb79f02dcb6510373979eab"
+      },
+      "midnight-onchain-runtime": {
+        "git": "https://github.com/betsudo/midnight-ledger",
+        "rev": "f82ac287442fc15c4eb79f02dcb6510373979eab"
+      },
+      "midnight-onchain-state": {
+        "git": "https://github.com/betsudo/midnight-ledger",
+        "rev": "f82ac287442fc15c4eb79f02dcb6510373979eab"
+      },
+      "midnight-onchain-vm": {
+        "git": "https://github.com/betsudo/midnight-ledger",
+        "rev": "f82ac287442fc15c4eb79f02dcb6510373979eab"
+      },
+      "midnight-proofs": {
+        "git": "https://github.com/betsudo/midnight-zk",
+        "rev": "0f9d5c3879f92a8beae8bdb9e7305f39e03a3227"
+      },
+      "midnight-serialize": {
+        "git": "https://github.com/betsudo/midnight-ledger",
+        "rev": "f82ac287442fc15c4eb79f02dcb6510373979eab"
+      },
+      "midnight-storage": {
+        "git": "https://github.com/betsudo/midnight-ledger",
+        "rev": "f82ac287442fc15c4eb79f02dcb6510373979eab"
+      },
+      "midnight-storage-core": {
+        "git": "https://github.com/betsudo/midnight-ledger",
+        "rev": "f82ac287442fc15c4eb79f02dcb6510373979eab"
+      },
+      "midnight-transient-crypto": {
+        "git": "https://github.com/betsudo/midnight-ledger",
+        "rev": "f82ac287442fc15c4eb79f02dcb6510373979eab"
+      },
+      "midnight-zk-stdlib": {
+        "git": "https://github.com/betsudo/midnight-zk",
+        "rev": "0f9d5c3879f92a8beae8bdb9e7305f39e03a3227"
+      },
+      "midnight-zkir-v2": {
+        "git": "https://github.com/betsudo/midnight-ledger",
+        "package": "midnight-zkir",
+        "rev": "f82ac287442fc15c4eb79f02dcb6510373979eab",
+        "version": "=2.2.0"
+      },
+      "midnight-zkir-v3": {
+        "git": "https://github.com/betsudo/midnight-zkir",
+        "package": "midnight-zkir",
+        "rev": "35e386b7b3f3a76117423ca72883c852181104dc",
+        "version": "=3.2.1"
+      },
+      "midnight-zswap": {
+        "git": "https://github.com/betsudo/midnight-ledger",
+        "rev": "f82ac287442fc15c4eb79f02dcb6510373979eab"
+      }
+    },
+    "ledger_version": "ledger-9.1.0.2",
     "macros_package": "midnight-compact-runtime-macros",
     "macros_version": "0.2.0",
     "runtime_abi": 54,
@@ -31,11 +104,11 @@
     "schema_version": 2
   },
   "compiler": {
-    "compact": "0.31.211",
-    "language": "0.23.105",
+    "compact": "0.31.215",
+    "language": "0.28.0",
     "rust_backend_artifact": "rust-backend-v0.3.0",
     "rust_backend_package": "0.2.0",
-    "typescript_runtime": "0.17.0"
+    "typescript_runtime": "0.18.0"
   },
   "distribution": "bundled-source",
   "registry_publication_verified": false,
@@ -51,12 +124,12 @@
     "runtime-rs-macros/src/tests/struct_repr.rs": "5a190e1af53f54ddf74943a0e7337c07ac9e4f837e8dc82816f63aa84c634271",
     "runtime-rs-macros/src/tests/witness_bridge.rs": "b428be6cf313dcfeeb4816bc9d90ab474a8b838b877e02d98a9254b650fab2e6",
     "runtime-rs-macros/src/witness_bridge.rs": "02e455920147f552d9dd5c7aae5936d1b281809e2be14ced1b59facbbc4f1e8b",
-    "runtime-rs/Cargo.toml": "d72edb90096544bac08f9422573af47a521cd4e10b7b23a2a9112ee016bc513a",
-    "runtime-rs/compatibility.json": "27cb58670b596e1b6fb0be8098351913e4644c670a893b53013ecc0f6c22b118",
+    "runtime-rs/Cargo.toml": "dc9563a18edc73871f105680013da7597331705413780c39cd681b20e2c75c81",
+    "runtime-rs/compatibility.json": "3aa54dfc3a9c89485278a71d9c45e096f85e9862d32938b2fd05e0c2a4f0a23c",
     "runtime-rs/src/context.rs": "b08f9d4164f070d657e67f1d183daac606c24513ff4fcdff16ebebe1ede70368",
     "runtime-rs/src/context/cell.rs": "2ef84839492221b9219c6aec08898e6de1390dd87dafa1a828dddbbca159f3ad",
     "runtime-rs/src/context/counter.rs": "125b89ed259fba510f253cd848ee146cacab10f3d5f9c43f85f5898ba78fc3f2",
-    "runtime-rs/src/context/event.rs": "790f75242a38c66b885bded80f6f1a3c00adf46a5297c7a6617beedcf571b3d6",
+    "runtime-rs/src/context/event.rs": "3c9ee9ed2b5726be76ec50b0b62f65bf0da25b54b070396ac563a67e2a3f1524",
     "runtime-rs/src/context/frame.rs": "e9066ef8a5f652c13ee533b327d0cabd5f21e4b07bd664216d6d67b855146a29",
     "runtime-rs/src/context/list.rs": "147b686be1c174d76862a82f99ceafbb88d2d32504583bc9140a98b83ff4c27f",
     "runtime-rs/src/context/local_boundary.rs": "0e3817a2d3b6b91f2139f7ed845c4eb9d9efe0a23e3d732a64330ed21a0b6880",
@@ -64,7 +137,7 @@
     "runtime-rs/src/context/set.rs": "43e7753900c0ae7d1b2d9dd4039f4d6427e9a87b2a19615bb59b00fea0d41933",
     "runtime-rs/src/context/trees.rs": "d2e275a06f5d2e6e289115b698f3daab55033e3f8b91acb826355da072c9d5f8",
     "runtime-rs/src/context/witness.rs": "47c44c033e60d4eed9ec0fe29b087cc48663f8e0aace06d31394577385a14f5d",
-    "runtime-rs/src/curve25519_point.rs": "2988b343acb319bb5bd028ad5301bd3902c073e16f5e176e74a097585d65797a",
+    "runtime-rs/src/curve25519_point.rs": "ea3e2a7415c00a98d5d40aa7eacc58ed2e3dc70807c22a4cc6221103f33acaa8",
     "runtime-rs/src/foreign_fields.rs": "986ed75fc2fc7201d3d3aa4dea053f4db7162ca9ca4ca0a0dfc391459b907268",
     "runtime-rs/src/functional/circuit.rs": "b5cc430d26a33c7e2cd0c89f8f54036f84f574843d7cd80840aa2fd89de80555",
     "runtime-rs/src/functional/circuit/counters.rs": "9999a5cf3f24b5c04b28bd16113a94a75fbec5aa3f551eae74a6f042a53f627a",
@@ -108,26 +181,26 @@
     "runtime-rs/src/functional/tests/typed_witnesses.rs": "f3122cc7ab9ab5ce2a60f497decdb4f629b7bf5326264a8c5d9b2b8407c61bea",
     "runtime-rs/src/functional/tests/witness.rs": "e3eee45dd83ee20bdf9df703d84faae30c2acfc231cacfd71599c614478ef741",
     "runtime-rs/src/functional/witness.rs": "43267cfa1f89d3823d2ab7764bbe70fb144834406b1c92b494df61c49fa1fd87",
-    "runtime-rs/src/hash_input.rs": "beb2258de480b1db85521ee0923c883a89aac98c9f18f1acf0aac45d56d9c963",
+    "runtime-rs/src/hash_input.rs": "61a039fbed10cc0ec7f6987334d1304d62349b3b0f600d73539f21b9a869f22c",
     "runtime-rs/src/jubjub_scalar.rs": "c652c7da096fe37eb09f96663a63437c3b6a250bd7f985256d460e02f3311a39",
-    "runtime-rs/src/ledger.rs": "3ee92970b0debe1bff1d525dc2e96d5a36871bd761be6e83e949e7b8851b8dc5",
+    "runtime-rs/src/ledger.rs": "cc593458970d888cd0cbdd2b9670a378fcb62422d3b4fa7971bdeb1141240d0d",
     "runtime-rs/src/ledger/cell.rs": "90eff71efe570fedab9a5ee3eb0a3f1fc09d3cd6de4cba02c03a33a585a91874",
     "runtime-rs/src/ledger/cell/input_validation.rs": "e01bede2100c80b9714eb02702b10c57493933052619612741f443c9a0108e87",
-    "runtime-rs/src/ledger/collections.rs": "9ee953ae086549ab597269b5ed9a545c542f90b686fe0fa5173901c79d8d5c93",
+    "runtime-rs/src/ledger/collections.rs": "194393b9459985f728322aa3b7b34a365c1ced969564c3b080152d9492173771",
     "runtime-rs/src/ledger/collections_input_tests.rs": "3f74d5317c14252b19238542d5a1e00bfe8d6ee384bbe0145692ea2e494be5c7",
     "runtime-rs/src/ledger/counter.rs": "dd8279e7c94010fe518f019d159f763dad79fdd00168287ca6dfa1063d67e650",
-    "runtime-rs/src/ledger/event.rs": "1ab53d252afd179fb985f0ea930dcd6eaed21b0036076cf7fe931f37e09ed2b5",
+    "runtime-rs/src/ledger/event.rs": "bb16343145a9dbed7fd49df49a8354e5cdf9e93dacb4a5cc99f3e59040746cd9",
     "runtime-rs/src/ledger/kernel.rs": "899e2105ba1e6de9a333ab424ed3ed4cb0a4c435b777d799f6358c49397997fa",
     "runtime-rs/src/ledger/merkle.rs": "ca026bd2d7e76332c7f80573fcbc580024f90661f987896b0234ec78654374b8",
     "runtime-rs/src/ledger/merkle_input_tests.rs": "8a01d2131472ccee9f5bfbc5902e897878f0c7b355c71c79c72a4e8708e50385",
     "runtime-rs/src/ledger/program_path_tests.rs": "ed8ada6b9548bc4442dcfaf21eac1e0862735013ee441aeeca44a623f41d9071",
     "runtime-rs/src/ledger/vm.rs": "407046ed839020793186a8cd1544d56f3d92f0810a8b42e33cedcf078001ed40",
-    "runtime-rs/src/lib.rs": "6678ec60b91b50116c87419ab83a432e165088afcd65dc954a87df23ad9fcbc7",
-    "runtime-rs/src/natives.rs": "d8ba67972a9e3d26b7a886735b3e4e4bc543e4ea76aac1c29a195c7d69cd9405",
+    "runtime-rs/src/lib.rs": "bf7a92179ca5236bdb8a8a1682401ef3cf44238b5b913c5890b286216d5243da",
+    "runtime-rs/src/natives.rs": "6bc24b106a3b2e5eb8619082c793b4413f1de24ccbbb437f1cb64938c8cc046b",
     "runtime-rs/src/opaque.rs": "8bc9d528795c1fcfbdef8cc426a249b54f29226df199e88013ae1cb8f8da3021",
     "runtime-rs/src/primitives.rs": "d3027ca8f1d12f935466316c4aad7cb7b316b65e4388df5af55a19d0eacc9f87",
     "runtime-rs/src/public_state.rs": "f66054c023f38811c5d7b9147657db25438505cd96694bd34460f778cb21eca0",
-    "runtime-rs/src/recording.rs": "bf5d06fc08184c6ea109a01f45774fc68738dcebbbe3d99db0048e6a5e56aa3a",
+    "runtime-rs/src/recording.rs": "c7007b85c18e2df079cfd0fe196117c3545efc10f0f6d16e11cde1eaf7607f29",
     "runtime-rs/src/recording/kernel.rs": "850c0a5e02a176910c6bac3b4831af7519721c0025ced2f2b0f0fa34c4bb270a",
     "runtime-rs/src/recording/merkle.rs": "59afda92b49883ff0ee9d376de15a40d86f0281f9f4eb31cacbc34514525819f",
     "runtime-rs/src/recording/zswap.rs": "e2cf3d079e95ef379b2c096a61d869891fddce3d9adbace0d92596ccdf4d127e",
@@ -144,8 +217,8 @@
     "runtime-rs/src/slots/set.rs": "809f3f9631ff4583987eb8b42d3b95c69ca2703d37b0615f604e7ccfed28a07b",
     "runtime-rs/src/transaction.rs": "d4d2822b9d7c246953c86a7244b73b516f3fe92a16d15639ecdd7e25ae43ab73",
     "runtime-rs/src/transaction/decoding.rs": "b326af3c62af6b6dca7a582cf6371379a40b64064fdd48b653341d9af3d6921f",
-    "runtime-rs/src/transaction/observation.rs": "b0a3484eff8e70dc5b0a8e3cb814bda96b71e3b6530b5b78945725fdb3c74ad0",
-    "runtime-rs/src/transaction/observation_tests.rs": "02a47bd1c3a8922445f6662413814155a9b21aec6cfc06a4ba1f48899f951388",
+    "runtime-rs/src/transaction/observation.rs": "9643c9096f09a8989b938397171c47d45f1de9e5edccab953283ffd28d618b20",
+    "runtime-rs/src/transaction/observation_tests.rs": "f17d4f3ddc6fa314e7dcc7c655f8fcc114b9ea93cfbbacaf59222db112f37da1",
     "runtime-rs/src/transaction/pair.rs": "2c04ad650f38fec2be9e1841dc8e5696adb51042d5880e2e99fa579f3735e48c",
     "runtime-rs/src/transaction/placement.rs": "a6b8ce9a5a2a971f66b81f06870b86252ee410f263d20e25052248c252301426",
     "runtime-rs/src/transaction/transient_tests.rs": "ee62dd9dad117bc30a529f329c996424866f2a9f6a040e4fd9e592d633869d5a",

@@ -27,13 +27,13 @@
       rev   = "532629b044a88473a7175f4a96c2511c91156136";
       flake = false;
     };
-    # Official Ledger 9.1.0.1 source for DID compatibility inspection. Cargo
-    # consumes the exact published crates rather than this source tree.
+    # Canonical patched Ledger 9.1.0.2 source used by the DID runtime and its
+    # Compact runtime. VC/Passport retain the separate Ledger 8 input above.
     midnight-ledger-v9 = {
       type  = "github";
-      owner = "midnightntwrk";
+      owner = "betsudo";
       repo  = "midnight-ledger";
-      rev   = "a2b30128ca4b660b73a068e29b56b48ede8c9a74";
+      rev   = "f82ac287442fc15c4eb79f02dcb6510373979eab";
       flake = false;
     };
     compact = {
@@ -55,20 +55,20 @@
     };
     compact-runtime-did = {
       type  = "github";
-      owner = "MediaNoxLabs";
+      owner = "betsudo";
       repo  = "compact";
       # Native Rust AST runtime from the signed Ledger 9 compatibility
       # checkpoint. Cargo.toml pins this same revision.
-      rev   = "7a4fab772ee34c19053ce293d08052b501ce4b50";
+      rev   = "05c9ed69b891baa4f15777403c9bdc8bc86c150c";
       flake = false;
     };
     compact-did = {
       type  = "github";
-      owner = "MediaNoxLabs";
+      owner = "betsudo";
       repo  = "compact";
       # DID-only Rust AST compiler. Keep the existing `compact` input for
       # VC/Passport generation until those packages publish Ledger 9 artifacts.
-      rev   = "7a4fab772ee34c19053ce293d08052b501ce4b50";
+      rev   = "05c9ed69b891baa4f15777403c9bdc8bc86c150c";
     };
   };
 

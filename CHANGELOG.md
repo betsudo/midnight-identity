@@ -14,6 +14,17 @@ and the project adheres to [SemVer](https://semver.org/).
 
 ### Changed
 
+- **DID runtime advances to the coordinated Ledger 9.1.0.2 Rust AST graph
+  (issue #107)** — generated bindings and compatibility evidence now use
+  `betsudo/compact@05c9ed69`, `betsudo/midnight-ledger@f82ac287`, and
+  `betsudo/midnight-zk@0f9d5c38`. The unchanged DID contract source is
+  regenerated with the current AST backend's explicit query-branch lowering;
+  the twelve ZKIR v3 artifacts remain byte-for-byte unchanged.
+  `midnight-storage=3.1.0` removes `sysinfo`
+  from the normal dependency cone, restoring iOS-simulator and Android checks;
+  VC and Passport remain intentionally isolated on their qualified Ledger 8
+  graph.
+
 - **Ledger 9 localnet ownership and attachment (issue #107)** — the repo-owned
   standalone Compose profile now pins the Ledger 9 node, Indexer v4, and proof
   server by image digest, binds fixed ports to loopback, keeps credentials in

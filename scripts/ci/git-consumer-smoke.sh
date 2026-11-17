@@ -5,7 +5,10 @@
 
 set -euo pipefail
 
-compact_revision=7a4fab772ee34c19053ce293d08052b501ce4b50
+compact_revision=05c9ed69b891baa4f15777403c9bdc8bc86c150c
+ledger_revision=f82ac287442fc15c4eb79f02dcb6510373979eab
+zk_revision=0f9d5c3879f92a8beae8bdb9e7305f39e03a3227
+zkir_revision=35e386b7b3f3a76117423ca72883c852181104dc
 repository_url=https://github.com/MediaNoxLabs/midnight-identity.git
 revision=
 
@@ -78,47 +81,102 @@ assert_single_source() {
   fi
 }
 
-assert_single_source midnight-compact-runtime MediaNoxLabs/compact "$compact_revision"
+assert_single_source midnight-compact-runtime betsudo/compact "$compact_revision"
 
-assert_registry_version() {
+assert_version() {
   local package=$1 expected_version=$2
   local matching
   matching=$(jq \
     --arg package "$package" \
     --arg version "$expected_version" \
-    '[.packages[] | select(.name == $package and .version == $version and (.source // "" | startswith("registry+")))] | length' \
+    '[.packages[] | select(.name == $package and .version == $version)] | length' \
     "$metadata")
   if [[ "$matching" != 1 ]]; then
-    echo "$package did not resolve exactly once from the registry at $expected_version" >&2
+    echo "$package did not resolve exactly once at $expected_version" >&2
+    jq --arg package "$package" '.packages[] | select(.name == $package) | {name, version, source}' "$metadata" >&2
+    exit 1
+  fi
+}
+
+assert_version_source() {
+  local package=$1 expected_version=$2 repository=$3 expected_revision=$4
+  local matching
+  matching=$(jq \
+    --arg package "$package" \
+    --arg version "$expected_version" \
+    --arg repository "$repository" \
+    --arg revision "$expected_revision" \
+    '[.packages[] | select(.name == $package and .version == $version and (.source // "" | contains($repository)) and (.source // "" | contains($revision)))] | length' \
+    "$metadata")
+  if [[ "$matching" != 1 ]]; then
+    echo "$package@$expected_version did not resolve exactly once from $repository@$expected_revision" >&2
     jq --arg package "$package" '.packages[] | select(.name == $package) | {name, version, source}' "$metadata" >&2
     exit 1
   fi
 }
 
 while read -r package version; do
-  assert_registry_version "$package" "$version"
+  assert_version "$package" "$version"
 done <<'VERSIONS'
 midnight-base-crypto 1.1.1
+midnight-circuits 7.3.0
 midnight-coin-structure 3.0.1
-midnight-ledger-v9 1.0.1
+midnight-curves 0.3.1
+midnight-ledger-v9 1.0.2
 midnight-onchain-runtime 4.0.1
 midnight-onchain-state 4.0.1
 midnight-onchain-vm 4.0.1
 midnight-proofs 0.8.2
 midnight-serialize 1.2.1
-midnight-storage 3.0.0
-midnight-transient-crypto 3.0.1
+midnight-storage 3.1.0
+midnight-storage-core 1.2.3
+midnight-transient-crypto 2.2.0
+midnight-transient-crypto 3.1.0
 midnight-zk-stdlib 2.4.0
+midnight-zkir 2.2.0
 midnight-zswap 9.0.1
 VERSIONS
+
+for package in \
+  midnight-base-crypto \
+  midnight-coin-structure \
+  midnight-ledger-v9 \
+  midnight-onchain-runtime \
+  midnight-onchain-state \
+  midnight-onchain-vm \
+  midnight-serialize \
+  midnight-storage \
+  midnight-storage-core \
+  midnight-zswap
+do
+  assert_single_source "$package" betsudo/midnight-ledger "$ledger_revision"
+done
+
+# Ledger 9 intentionally retains the v2 transient/ZKIR pair as a private
+# implementation boundary while the active runtime uses transient-crypto
+# 3.1.0. Both versions must still come from the one Ledger revision.
+assert_version_source midnight-transient-crypto 2.2.0 betsudo/midnight-ledger "$ledger_revision"
+assert_version_source midnight-transient-crypto 3.1.0 betsudo/midnight-ledger "$ledger_revision"
+assert_version_source midnight-zkir 2.2.0 betsudo/midnight-ledger "$ledger_revision"
+
+for package in midnight-circuits midnight-curves midnight-proofs midnight-zk-stdlib; do
+  assert_single_source "$package" betsudo/midnight-zk "$zk_revision"
+done
+
+if jq -e --arg revision "$zkir_revision" \
+  '.packages[] | select(.name == "midnight-zkir" and ((.source // "") | contains($revision)))' \
+  "$metadata" >/dev/null; then
+  echo "runtime consumer unexpectedly includes the compiler-only ZKIR parser" >&2
+  exit 1
+fi
 
 # `midnight-zkir=3.2.1` is an exact development dependency used to parse the
 # generated compiler artifacts. It is intentionally absent from this runtime
 # consumer cone; Ledger 9 may retain an older ZKIR version as a private
 # implementation dependency.
 
-if jq -e '.packages[] | select((.source // "") | contains("midnight-ledger.git") or contains("midnight-zk.git"))' "$metadata" >/dev/null; then
-  echo "Ledger 9 consumer graph unexpectedly contains a Git-sourced ledger/proof package" >&2
+if jq -e '.packages[] | select(.name == "sysinfo")' "$metadata" >/dev/null; then
+  echo "Ledger 9 consumer graph unexpectedly contains sysinfo" >&2
   exit 1
 fi
 

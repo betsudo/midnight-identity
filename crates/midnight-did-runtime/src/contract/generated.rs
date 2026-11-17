@@ -1619,14 +1619,39 @@ pub mod ledger_contract {
             .member(context, (__compact_param_0.clone()).clone())?;
         context = __compact_query_0.context;
         total_cost += __compact_query_0.gas_cost;
-        let result = if __compact_query_0.result {
-            true
-        } else {
-            let __compact_query_1 = crate::ledger_slots::schnorrJubjubVerificationMethods
-                .member(context, (__compact_param_0.clone()).clone())?;
-            context = __compact_query_1.context;
-            total_cost += __compact_query_1.gas_cost;
-            __compact_query_1.result
+        let result = {
+            #[inline(never)]
+            fn __compact_query_branch<C, T>(
+                context: C,
+                body: impl FnOnce(C) -> Result<(C, T), runtime::CompactError>,
+            ) -> Result<(C, T), runtime::CompactError> {
+                body(context)
+            }
+            let (__compact_next_context, __compact_branch_value) = if __compact_query_0
+                .result
+            {
+                __compact_query_branch(
+                    context,
+                    |mut context| -> Result<_, runtime::CompactError> {
+                        let __compact_branch_value = true;
+                        Ok((context, __compact_branch_value))
+                    },
+                )?
+            } else {
+                __compact_query_branch(
+                    context,
+                    |mut context| -> Result<_, runtime::CompactError> {
+                        let __compact_query_1 = crate::ledger_slots::schnorrJubjubVerificationMethods
+                            .member(context, (__compact_param_0.clone()).clone())?;
+                        context = __compact_query_1.context;
+                        total_cost += __compact_query_1.gas_cost;
+                        let __compact_branch_value = __compact_query_1.result;
+                        Ok((context, __compact_branch_value))
+                    },
+                )?
+            };
+            context = __compact_next_context;
+            __compact_branch_value
         };
         Ok(runtime::context::CircuitResult {
             context,
@@ -1801,15 +1826,43 @@ pub mod ledger_contract {
         let __compact_query_1 = crate::ledger_slots::controllerPublicKey.read(context)?;
         context = __compact_query_1.context;
         total_cost += __compact_query_1.gas_cost;
-        if !(if __compact_value_0 != runtime::jubjub_point_x(__compact_query_1.result) {
-            true
-        } else {
-            let __compact_value_2 = runtime::jubjub_point_y(__compact_param_0);
-            let __compact_query_3 = crate::ledger_slots::controllerPublicKey
-                .read(context)?;
-            context = __compact_query_3.context;
-            total_cost += __compact_query_3.gas_cost;
-            __compact_value_2 != runtime::jubjub_point_y(__compact_query_3.result)
+        if !({
+            #[inline(never)]
+            fn __compact_query_branch<C, T>(
+                context: C,
+                body: impl FnOnce(C) -> Result<(C, T), runtime::CompactError>,
+            ) -> Result<(C, T), runtime::CompactError> {
+                body(context)
+            }
+            let (__compact_next_context, __compact_branch_value) = if __compact_value_0
+                != runtime::jubjub_point_x(__compact_query_1.result)
+            {
+                __compact_query_branch(
+                    context,
+                    |mut context| -> Result<_, runtime::CompactError> {
+                        let __compact_branch_value = true;
+                        Ok((context, __compact_branch_value))
+                    },
+                )?
+            } else {
+                __compact_query_branch(
+                    context,
+                    |mut context| -> Result<_, runtime::CompactError> {
+                        let __compact_value_2 = runtime::jubjub_point_y(
+                            __compact_param_0,
+                        );
+                        let __compact_query_3 = crate::ledger_slots::controllerPublicKey
+                            .read(context)?;
+                        context = __compact_query_3.context;
+                        total_cost += __compact_query_3.gas_cost;
+                        let __compact_branch_value = __compact_value_2
+                            != runtime::jubjub_point_y(__compact_query_3.result);
+                        Ok((context, __compact_branch_value))
+                    },
+                )?
+            };
+            context = __compact_next_context;
+            __compact_branch_value
         }) {
             return Err(
                 runtime::CompactError::AssertionFailed(
@@ -1837,15 +1890,43 @@ pub mod ledger_contract {
             .read(context)?;
         context = __compact_query_1.context;
         total_cost += __compact_query_1.gas_cost;
-        if !(if __compact_value_0 != runtime::jubjub_point_x(__compact_query_1.result) {
-            true
-        } else {
-            let __compact_value_2 = runtime::jubjub_point_y(__compact_param_0);
-            let __compact_query_3 = crate::ledger_slots::recoveryAuthorityPublicKey
-                .read(context)?;
-            context = __compact_query_3.context;
-            total_cost += __compact_query_3.gas_cost;
-            __compact_value_2 != runtime::jubjub_point_y(__compact_query_3.result)
+        if !({
+            #[inline(never)]
+            fn __compact_query_branch<C, T>(
+                context: C,
+                body: impl FnOnce(C) -> Result<(C, T), runtime::CompactError>,
+            ) -> Result<(C, T), runtime::CompactError> {
+                body(context)
+            }
+            let (__compact_next_context, __compact_branch_value) = if __compact_value_0
+                != runtime::jubjub_point_x(__compact_query_1.result)
+            {
+                __compact_query_branch(
+                    context,
+                    |mut context| -> Result<_, runtime::CompactError> {
+                        let __compact_branch_value = true;
+                        Ok((context, __compact_branch_value))
+                    },
+                )?
+            } else {
+                __compact_query_branch(
+                    context,
+                    |mut context| -> Result<_, runtime::CompactError> {
+                        let __compact_value_2 = runtime::jubjub_point_y(
+                            __compact_param_0,
+                        );
+                        let __compact_query_3 = crate::ledger_slots::recoveryAuthorityPublicKey
+                            .read(context)?;
+                        context = __compact_query_3.context;
+                        total_cost += __compact_query_3.gas_cost;
+                        let __compact_branch_value = __compact_value_2
+                            != runtime::jubjub_point_y(__compact_query_3.result);
+                        Ok((context, __compact_branch_value))
+                    },
+                )?
+            };
+            context = __compact_next_context;
+            __compact_branch_value
         }) {
             return Err(
                 runtime::CompactError::AssertionFailed(
@@ -1921,60 +2002,183 @@ pub mod ledger_contract {
         let private_transcript_outputs = Vec::new();
         let mut context = context;
         let __compact_value_0 = __compact_param_0;
-        let result = if __compact_value_0
-            == crate::types::VerificationMethodRelation::Authentication
-        {
-            let __compact_query_1 = crate::ledger_slots::authenticationRelation
-                .member(context, (__compact_param_1.clone()).clone())?;
-            context = __compact_query_1.context;
-            total_cost += __compact_query_1.gas_cost;
-            __compact_query_1.result
-        } else {
-            let __compact_value_2 = __compact_param_0;
-            if __compact_value_2
-                == crate::types::VerificationMethodRelation::AssertionMethod
-            {
-                let __compact_query_3 = crate::ledger_slots::assertionMethodRelation
-                    .member(context, (__compact_param_1.clone()).clone())?;
-                context = __compact_query_3.context;
-                total_cost += __compact_query_3.gas_cost;
-                __compact_query_3.result
-            } else {
-                let __compact_value_4 = __compact_param_0;
-                if __compact_value_4
-                    == crate::types::VerificationMethodRelation::KeyAgreement
-                {
-                    let __compact_query_5 = crate::ledger_slots::keyAgreementRelation
-                        .member(context, (__compact_param_1.clone()).clone())?;
-                    context = __compact_query_5.context;
-                    total_cost += __compact_query_5.gas_cost;
-                    __compact_query_5.result
-                } else {
-                    let __compact_value_6 = __compact_param_0;
-                    if __compact_value_6
-                        == crate::types::VerificationMethodRelation::CapabilityInvocation
-                    {
-                        let __compact_query_7 = crate::ledger_slots::capabilityInvocationRelation
-                            .member(context, (__compact_param_1.clone()).clone())?;
-                        context = __compact_query_7.context;
-                        total_cost += __compact_query_7.gas_cost;
-                        __compact_query_7.result
-                    } else {
-                        let __compact_value_8 = __compact_param_0;
-                        if __compact_value_8
-                            == crate::types::VerificationMethodRelation::CapabilityDelegation
-                        {
-                            let __compact_query_9 = crate::ledger_slots::capabilityDelegationRelation
-                                .member(context, (__compact_param_1.clone()).clone())?;
-                            context = __compact_query_9.context;
-                            total_cost += __compact_query_9.gas_cost;
-                            __compact_query_9.result
-                        } else {
-                            false
-                        }
-                    }
-                }
+        let result = {
+            #[inline(never)]
+            fn __compact_query_branch<C, T>(
+                context: C,
+                body: impl FnOnce(C) -> Result<(C, T), runtime::CompactError>,
+            ) -> Result<(C, T), runtime::CompactError> {
+                body(context)
             }
+            let (__compact_next_context, __compact_branch_value) = if __compact_value_0
+                == crate::types::VerificationMethodRelation::Authentication
+            {
+                __compact_query_branch(
+                    context,
+                    |mut context| -> Result<_, runtime::CompactError> {
+                        let __compact_query_1 = crate::ledger_slots::authenticationRelation
+                            .member(context, (__compact_param_1.clone()).clone())?;
+                        context = __compact_query_1.context;
+                        total_cost += __compact_query_1.gas_cost;
+                        let __compact_branch_value = __compact_query_1.result;
+                        Ok((context, __compact_branch_value))
+                    },
+                )?
+            } else {
+                __compact_query_branch(
+                    context,
+                    |mut context| -> Result<_, runtime::CompactError> {
+                        let __compact_value_2 = __compact_param_0;
+                        let __compact_branch_value = {
+                            #[inline(never)]
+                            fn __compact_query_branch<C, T>(
+                                context: C,
+                                body: impl FnOnce(
+                                    C,
+                                ) -> Result<(C, T), runtime::CompactError>,
+                            ) -> Result<(C, T), runtime::CompactError> {
+                                body(context)
+                            }
+                            let (__compact_next_context, __compact_branch_value) = if __compact_value_2
+                                == crate::types::VerificationMethodRelation::AssertionMethod
+                            {
+                                __compact_query_branch(
+                                    context,
+                                    |mut context| -> Result<_, runtime::CompactError> {
+                                        let __compact_query_3 = crate::ledger_slots::assertionMethodRelation
+                                            .member(context, (__compact_param_1.clone()).clone())?;
+                                        context = __compact_query_3.context;
+                                        total_cost += __compact_query_3.gas_cost;
+                                        let __compact_branch_value = __compact_query_3.result;
+                                        Ok((context, __compact_branch_value))
+                                    },
+                                )?
+                            } else {
+                                __compact_query_branch(
+                                    context,
+                                    |mut context| -> Result<_, runtime::CompactError> {
+                                        let __compact_value_4 = __compact_param_0;
+                                        let __compact_branch_value = {
+                                            #[inline(never)]
+                                            fn __compact_query_branch<C, T>(
+                                                context: C,
+                                                body: impl FnOnce(
+                                                    C,
+                                                ) -> Result<(C, T), runtime::CompactError>,
+                                            ) -> Result<(C, T), runtime::CompactError> {
+                                                body(context)
+                                            }
+                                            let (__compact_next_context, __compact_branch_value) = if __compact_value_4
+                                                == crate::types::VerificationMethodRelation::KeyAgreement
+                                            {
+                                                __compact_query_branch(
+                                                    context,
+                                                    |mut context| -> Result<_, runtime::CompactError> {
+                                                        let __compact_query_5 = crate::ledger_slots::keyAgreementRelation
+                                                            .member(context, (__compact_param_1.clone()).clone())?;
+                                                        context = __compact_query_5.context;
+                                                        total_cost += __compact_query_5.gas_cost;
+                                                        let __compact_branch_value = __compact_query_5.result;
+                                                        Ok((context, __compact_branch_value))
+                                                    },
+                                                )?
+                                            } else {
+                                                __compact_query_branch(
+                                                    context,
+                                                    |mut context| -> Result<_, runtime::CompactError> {
+                                                        let __compact_value_6 = __compact_param_0;
+                                                        let __compact_branch_value = {
+                                                            #[inline(never)]
+                                                            fn __compact_query_branch<C, T>(
+                                                                context: C,
+                                                                body: impl FnOnce(
+                                                                    C,
+                                                                ) -> Result<(C, T), runtime::CompactError>,
+                                                            ) -> Result<(C, T), runtime::CompactError> {
+                                                                body(context)
+                                                            }
+                                                            let (__compact_next_context, __compact_branch_value) = if __compact_value_6
+                                                                == crate::types::VerificationMethodRelation::CapabilityInvocation
+                                                            {
+                                                                __compact_query_branch(
+                                                                    context,
+                                                                    |mut context| -> Result<_, runtime::CompactError> {
+                                                                        let __compact_query_7 = crate::ledger_slots::capabilityInvocationRelation
+                                                                            .member(context, (__compact_param_1.clone()).clone())?;
+                                                                        context = __compact_query_7.context;
+                                                                        total_cost += __compact_query_7.gas_cost;
+                                                                        let __compact_branch_value = __compact_query_7.result;
+                                                                        Ok((context, __compact_branch_value))
+                                                                    },
+                                                                )?
+                                                            } else {
+                                                                __compact_query_branch(
+                                                                    context,
+                                                                    |mut context| -> Result<_, runtime::CompactError> {
+                                                                        let __compact_value_8 = __compact_param_0;
+                                                                        let __compact_branch_value = {
+                                                                            #[inline(never)]
+                                                                            fn __compact_query_branch<C, T>(
+                                                                                context: C,
+                                                                                body: impl FnOnce(
+                                                                                    C,
+                                                                                ) -> Result<(C, T), runtime::CompactError>,
+                                                                            ) -> Result<(C, T), runtime::CompactError> {
+                                                                                body(context)
+                                                                            }
+                                                                            let (__compact_next_context, __compact_branch_value) = if __compact_value_8
+                                                                                == crate::types::VerificationMethodRelation::CapabilityDelegation
+                                                                            {
+                                                                                __compact_query_branch(
+                                                                                    context,
+                                                                                    |mut context| -> Result<_, runtime::CompactError> {
+                                                                                        let __compact_query_9 = crate::ledger_slots::capabilityDelegationRelation
+                                                                                            .member(context, (__compact_param_1.clone()).clone())?;
+                                                                                        context = __compact_query_9.context;
+                                                                                        total_cost += __compact_query_9.gas_cost;
+                                                                                        let __compact_branch_value = __compact_query_9.result;
+                                                                                        Ok((context, __compact_branch_value))
+                                                                                    },
+                                                                                )?
+                                                                            } else {
+                                                                                __compact_query_branch(
+                                                                                    context,
+                                                                                    |mut context| -> Result<_, runtime::CompactError> {
+                                                                                        let __compact_branch_value = false;
+                                                                                        Ok((context, __compact_branch_value))
+                                                                                    },
+                                                                                )?
+                                                                            };
+                                                                            context = __compact_next_context;
+                                                                            __compact_branch_value
+                                                                        };
+                                                                        Ok((context, __compact_branch_value))
+                                                                    },
+                                                                )?
+                                                            };
+                                                            context = __compact_next_context;
+                                                            __compact_branch_value
+                                                        };
+                                                        Ok((context, __compact_branch_value))
+                                                    },
+                                                )?
+                                            };
+                                            context = __compact_next_context;
+                                            __compact_branch_value
+                                        };
+                                        Ok((context, __compact_branch_value))
+                                    },
+                                )?
+                            };
+                            context = __compact_next_context;
+                            __compact_branch_value
+                        };
+                        Ok((context, __compact_branch_value))
+                    },
+                )?
+            };
+            context = __compact_next_context;
+            __compact_branch_value
         };
         Ok(runtime::context::CircuitResult {
             context,
@@ -2322,17 +2526,44 @@ pub mod ledger_contract {
                     .member(context, (__compact_param_1.clone()).clone())?;
                 context = __compact_query_5.context;
                 total_cost += __compact_query_5.gas_cost;
-                if !(if !(__compact_query_5.result) {
-                    true
-                } else {
-                    let __compact_query_6 = crate::ledger_slots::verificationMethods
-                        .lookup(context, (__compact_param_1.clone()).clone())?;
-                    context = __compact_query_6.context;
-                    total_cost += __compact_query_6.gas_cost;
-                    let __compact_value_7 = (((__compact_query_6.result).publicKeyJwk)
-                        .clone())
-                        .crv;
-                    __compact_value_7 != crate::types::CurveType::X25519
+                if !({
+                    #[inline(never)]
+                    fn __compact_query_branch<C, T>(
+                        context: C,
+                        body: impl FnOnce(C) -> Result<(C, T), runtime::CompactError>,
+                    ) -> Result<(C, T), runtime::CompactError> {
+                        body(context)
+                    }
+                    let (__compact_next_context, __compact_branch_value) = if !(__compact_query_5
+                        .result)
+                    {
+                        __compact_query_branch(
+                            context,
+                            |mut context| -> Result<_, runtime::CompactError> {
+                                let __compact_branch_value = true;
+                                Ok((context, __compact_branch_value))
+                            },
+                        )?
+                    } else {
+                        __compact_query_branch(
+                            context,
+                            |mut context| -> Result<_, runtime::CompactError> {
+                                let __compact_query_6 = crate::ledger_slots::verificationMethods
+                                    .lookup(context, (__compact_param_1.clone()).clone())?;
+                                context = __compact_query_6.context;
+                                total_cost += __compact_query_6.gas_cost;
+                                let __compact_value_7 = (((__compact_query_6.result)
+                                    .publicKeyJwk)
+                                    .clone())
+                                    .crv;
+                                let __compact_branch_value = __compact_value_7
+                                    != crate::types::CurveType::X25519;
+                                Ok((context, __compact_branch_value))
+                            },
+                        )?
+                    };
+                    context = __compact_next_context;
+                    __compact_branch_value
                 }) {
                     return Err(
                         runtime::CompactError::AssertionFailed(
@@ -2392,31 +2623,105 @@ pub mod ledger_contract {
             .member(context, (__compact_param_0.clone()).clone())?;
         context = __compact_query_2.context;
         total_cost += __compact_query_2.gas_cost;
-        context = if if if if __compact_query_2.result {
-            true
-        } else {
-            let __compact_query_3 = crate::ledger_slots::assertionMethodRelation
-                .member(context, (__compact_param_0.clone()).clone())?;
-            context = __compact_query_3.context;
-            total_cost += __compact_query_3.gas_cost;
-            __compact_query_3.result
-        } {
-            true
-        } else {
-            let __compact_query_4 = crate::ledger_slots::capabilityInvocationRelation
-                .member(context, (__compact_param_0.clone()).clone())?;
-            context = __compact_query_4.context;
-            total_cost += __compact_query_4.gas_cost;
-            __compact_query_4.result
-        } {
-            true
-        } else {
-            let __compact_query_5 = crate::ledger_slots::capabilityDelegationRelation
-                .member(context, (__compact_param_0.clone()).clone())?;
-            context = __compact_query_5.context;
-            total_cost += __compact_query_5.gas_cost;
-            __compact_query_5.result
-        } {
+        let __compact_state_branch_condition = {
+            #[inline(never)]
+            fn __compact_query_branch<C, T>(
+                context: C,
+                body: impl FnOnce(C) -> Result<(C, T), runtime::CompactError>,
+            ) -> Result<(C, T), runtime::CompactError> {
+                body(context)
+            }
+            let __compact_branch_condition = {
+                #[inline(never)]
+                fn __compact_query_branch<C, T>(
+                    context: C,
+                    body: impl FnOnce(C) -> Result<(C, T), runtime::CompactError>,
+                ) -> Result<(C, T), runtime::CompactError> {
+                    body(context)
+                }
+                let __compact_branch_condition = {
+                    #[inline(never)]
+                    fn __compact_query_branch<C, T>(
+                        context: C,
+                        body: impl FnOnce(C) -> Result<(C, T), runtime::CompactError>,
+                    ) -> Result<(C, T), runtime::CompactError> {
+                        body(context)
+                    }
+                    let (__compact_next_context, __compact_branch_value) = if __compact_query_2
+                        .result
+                    {
+                        __compact_query_branch(
+                            context,
+                            |mut context| -> Result<_, runtime::CompactError> {
+                                let __compact_branch_value = true;
+                                Ok((context, __compact_branch_value))
+                            },
+                        )?
+                    } else {
+                        __compact_query_branch(
+                            context,
+                            |mut context| -> Result<_, runtime::CompactError> {
+                                let __compact_query_3 = crate::ledger_slots::assertionMethodRelation
+                                    .member(context, (__compact_param_0.clone()).clone())?;
+                                context = __compact_query_3.context;
+                                total_cost += __compact_query_3.gas_cost;
+                                let __compact_branch_value = __compact_query_3.result;
+                                Ok((context, __compact_branch_value))
+                            },
+                        )?
+                    };
+                    context = __compact_next_context;
+                    __compact_branch_value
+                };
+                let (__compact_next_context, __compact_branch_value) = if __compact_branch_condition {
+                    __compact_query_branch(
+                        context,
+                        |mut context| -> Result<_, runtime::CompactError> {
+                            let __compact_branch_value = true;
+                            Ok((context, __compact_branch_value))
+                        },
+                    )?
+                } else {
+                    __compact_query_branch(
+                        context,
+                        |mut context| -> Result<_, runtime::CompactError> {
+                            let __compact_query_4 = crate::ledger_slots::capabilityInvocationRelation
+                                .member(context, (__compact_param_0.clone()).clone())?;
+                            context = __compact_query_4.context;
+                            total_cost += __compact_query_4.gas_cost;
+                            let __compact_branch_value = __compact_query_4.result;
+                            Ok((context, __compact_branch_value))
+                        },
+                    )?
+                };
+                context = __compact_next_context;
+                __compact_branch_value
+            };
+            let (__compact_next_context, __compact_branch_value) = if __compact_branch_condition {
+                __compact_query_branch(
+                    context,
+                    |mut context| -> Result<_, runtime::CompactError> {
+                        let __compact_branch_value = true;
+                        Ok((context, __compact_branch_value))
+                    },
+                )?
+            } else {
+                __compact_query_branch(
+                    context,
+                    |mut context| -> Result<_, runtime::CompactError> {
+                        let __compact_query_5 = crate::ledger_slots::capabilityDelegationRelation
+                            .member(context, (__compact_param_0.clone()).clone())?;
+                        context = __compact_query_5.context;
+                        total_cost += __compact_query_5.gas_cost;
+                        let __compact_branch_value = __compact_query_5.result;
+                        Ok((context, __compact_branch_value))
+                    },
+                )?
+            };
+            context = __compact_next_context;
+            __compact_branch_value
+        };
+        context = if __compact_state_branch_condition {
             #[allow(unused_mut)]
             let mut context = context;
             let __compact_value_6 = __compact_param_1;

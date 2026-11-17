@@ -11,8 +11,10 @@ import { fileURLToPath } from "node:url";
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const ledgerRevision = "8655615e7c4cbf3a1187b3203bf72e69dc09b8dc";
 const compactRevision = "32e314770da10cc62dab30dcfeb340ec4c6bcb64";
-const didCompactRevision = "7a4fab772ee34c19053ce293d08052b501ce4b50";
-const ledger9Revision = "a2b30128ca4b660b73a068e29b56b48ede8c9a74";
+const didCompactRevision = "05c9ed69b891baa4f15777403c9bdc8bc86c150c";
+const ledger9Revision = "f82ac287442fc15c4eb79f02dcb6510373979eab";
+const ledger9ZkRevision = "0f9d5c3879f92a8beae8bdb9e7305f39e03a3227";
+const ledger9ZkirRevision = "35e386b7b3f3a76117423ca72883c852181104dc";
 const proofsRevision = "532629b044a88473a7175f4a96c2511c91156136";
 const ledgerVersions = new Map([
   ["midnight-base-crypto", "1.0.1"],
@@ -37,8 +39,18 @@ function exactGitDependency(name, repository, revision) {
   return new RegExp(`^${escaped(name)}\\s*=\\s*\\{[^}]*git\\s*=\\s*"${escaped(repository)}"[^}]*rev\\s*=\\s*"${revision}"[^}]*\\}`, "mu");
 }
 
+function exactGitPatch(alias, packageName, version, repository, revision) {
+  return new RegExp(
+    `^${escaped(alias)}\\s*=\\s*\\{[^}]*package\\s*=\\s*"${escaped(packageName)}"[^}]*version\\s*=\\s*"=${escaped(version)}"[^}]*git\\s*=\\s*"${escaped(repository)}"[^}]*rev\\s*=\\s*"${revision}"[^}]*\\}`,
+    "mu",
+  );
+}
+
 test("published workspace dependencies use one immutable Ledger and Compact graph", async () => {
-  const manifest = await readFile(path.join(root, "Cargo.toml"), "utf8");
+  const [manifest, didRuntimeManifest] = await Promise.all([
+    readFile(path.join(root, "Cargo.toml"), "utf8"),
+    readFile(path.join(root, "crates", "midnight-did-runtime", "Cargo.toml"), "utf8"),
+  ]);
   const ledgerRepository = "https://github.com/MediaNoxLabs/midnight-ledger.git";
   for (const crate of ledgerCrates) {
     const matches = manifest.match(new RegExp(exactGitDependency(crate, ledgerRepository, ledgerRevision), "gmu")) ?? [];
@@ -50,9 +62,41 @@ test("published workspace dependencies use one immutable Ledger and Compact grap
       exactGitDependency(alias, "https://github.com/MediaNoxLabs/compact.git", compactRevision),
     );
   }
+  assert.match(manifest, new RegExp(`midnight-proofs-ledger8[\\s\\S]*?rev\\s*=\\s*"${proofsRevision}"`, "u"));
+  for (const packageName of [
+    "midnight-base-crypto",
+    "midnight-coin-structure",
+    "midnight-onchain-runtime",
+    "midnight-serialize",
+    "midnight-storage",
+    "midnight-transient-crypto",
+  ]) {
+    assert.match(didRuntimeManifest, exactGitDependency(packageName, "https://github.com/betsudo/midnight-ledger", ledger9Revision));
+  }
+  assert.match(
+    didRuntimeManifest,
+    exactGitDependency("midnight-ledger", "https://github.com/betsudo/midnight-ledger", ledger9Revision),
+  );
+  for (const [alias, packageName, version] of [
+    ["midnight-circuits-ledger9", "midnight-circuits", "7.3.0"],
+    ["midnight-curves-ledger9", "midnight-curves", "0.3.1"],
+    ["midnight-proofs-ledger9", "midnight-proofs", "0.8.2"],
+    ["midnight-zk-stdlib-ledger9", "midnight-zk-stdlib", "2.4.0"],
+  ]) {
+    assert.match(
+      manifest,
+      exactGitPatch(alias, packageName, version, "https://github.com/betsudo/midnight-zk", ledger9ZkRevision),
+    );
+  }
   assert.match(
     manifest,
-    exactGitDependency("midnight-proofs", "https://github.com/MediaNoxLabs/midnight-zk.git", proofsRevision),
+    exactGitPatch(
+      "midnight-zkir-ledger9",
+      "midnight-zkir",
+      "3.2.1",
+      "https://github.com/betsudo/midnight-zkir",
+      ledger9ZkirRevision,
+    ),
   );
   assert.doesNotMatch(manifest, /path\s*=\s*"third_party\/(?:midnight-ledger|compact)/u);
 });
@@ -109,9 +153,9 @@ test("clean external-consumer smoke is wired into CI and documents its supported
   assert.match(script, /features\s*=\s*\[\s*"ledger-transaction"\s*\]/u);
   assert.match(script, new RegExp(didCompactRevision, "u"));
   for (const [name, version] of [
-    ["midnight-ledger-v9", "1.0.1"],
+    ["midnight-ledger-v9", "1.0.2"],
     ["midnight-proofs", "0.8.2"],
-    ["midnight-storage", "3.0.0"],
+    ["midnight-storage", "3.1.0"],
     ["midnight-zk-stdlib", "2.4.0"],
   ]) {
     assert.match(script, new RegExp(`${escaped(name)}\\s+${escaped(version)}`, "u"));
@@ -119,6 +163,9 @@ test("clean external-consumer smoke is wired into CI and documents its supported
   assert.match(workflow, /bash scripts\/ci\/git-consumer-smoke\.sh/u);
   assert.match(workflow, /--target aarch64-apple-ios-sim/u);
   assert.match(workflow, /xcrun --sdk iphonesimulator --show-sdk-path/u);
+  assert.match(script, new RegExp(ledger9Revision, "u"));
+  assert.match(script, new RegExp(ledger9ZkRevision, "u"));
+  assert.match(script, new RegExp(ledger9ZkirRevision, "u"));
   for (const phrase of [
     "Immutable Git consumption",
     "default feature set is empty",

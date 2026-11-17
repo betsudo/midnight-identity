@@ -36,7 +36,7 @@ Rust port. This is the only crate in the workspace that touches
     transaction construction, proving, submission, and finality; the indexer
     provider supplies independently decoded state and restart reconciliation.
 - `assets/rust-compatibility.json` — compiler-emitted ABI and exact dependency
-  receipt for Ledger 9.1.0.1 / runtime ABI 54.
+  receipt for Ledger 9.1.0.2 / runtime ABI 54.
 - `ledger9_signing` — the TypeScript-compatible controller/recovery signer on
   Ledger 9 curve types. The Ledger 8 helper remains isolated for VC consumers.
 - `examples/generate_ledger9_fixture.rs` — deterministic regeneration of the
@@ -64,13 +64,17 @@ midnight-did-runtime = {
 ```
 
 The DID runtime pins the signed Rust AST compiler/runtime source to
-`MediaNoxLabs/compact@7a4fab772ee34c19053ce293d08052b501ce4b50`.
-Its compiler-emitted receipt selects released Ledger 9.1.0.1 packages,
-including `midnight-ledger-v9=1.0.1`, `midnight-proofs=0.8.2`,
-`midnight-zk-stdlib=2.4.0`, and ZKIR 3.2.x. The repository pins the ZKIR
-parser to 3.2.1 and tests all twelve emitted ZKIR v3 sources. VC and Passport
-remain on their existing Compact/Ledger 8 evidence graph; their types never
-cross the DID runtime boundary.
+`betsudo/compact@05c9ed69b891baa4f15777403c9bdc8bc86c150c`.
+Its compiler-emitted receipt selects one coordinated Ledger 9.1.0.2 source
+graph: `betsudo/midnight-ledger@f82ac287442fc15c4eb79f02dcb6510373979eab`
+and `betsudo/midnight-zk@0f9d5c3879f92a8beae8bdb9e7305f39e03a3227`.
+That graph contains `midnight-ledger-v9=1.0.2`, `midnight-storage=3.1.0`,
+`midnight-proofs=0.8.2`, and `midnight-zk-stdlib=2.4.0`. The repository pins
+the compiler-only ZKIR parser to 3.2.1 from
+`betsudo/midnight-zkir@35e386b7b3f3a76117423ca72883c852181104dc`
+and tests all twelve emitted ZKIR v3 sources. VC and Passport remain on their
+existing Compact/Ledger 8 evidence
+graph; their types never cross the DID runtime boundary.
 
 The supported external-consumer feature cone is native Rust only:
 
@@ -81,10 +85,15 @@ The supported external-consumer feature cone is native Rust only:
   concrete transport remains an injected provider concern.
 
 `midnight-did-uniffi` is not in this cone and its mock handle is not a
-production API. This runtime cone is also not advertised as wasm-clean.
-The current released Ledger 9 storage cone is not yet iOS-simulator clean:
-`midnight-storage=3.0.0` pulls `sysinfo=0.39.6`, which selects macOS-only libc
-symbols on iOS. ADR 0012 records this upstream qualification blocker.
+production API. This runtime cone is also not advertised as wasm-clean. The
+patched `midnight-storage=3.1.0` boundary removes `sysinfo` from the normal
+dependency cone, so the exact graph is checked for iOS simulator and Android
+without introducing a target-specific fork.
+
+The standalone probe discovers an already-running shared Ledger 9 stack via
+`scripts/midnight-localnet.sh attach` and uses the indexer's `/api/v4/graphql`
+endpoint. Only its designated owner may invoke `up` or `down`; owner `up`
+attaches first and will not start a duplicate compatible stack.
 
 Git resolution is the portable default. Inside `nix develop .#rust`, local
 builds may opt into the already materialised Nix sources without changing any
@@ -94,5 +103,5 @@ published manifest:
 scripts/cargo-with-nix-overrides.sh check -p midnight-did-runtime --features ledger-transaction
 ```
 
-The wrapper substitutes only the exact Compact runtime source. Released Ledger
-9 dependencies continue to resolve from the registry.
+The wrapper substitutes only the exact Compact runtime source materialized by
+Nix. Ledger and proof dependencies retain their immutable Git source identities.
