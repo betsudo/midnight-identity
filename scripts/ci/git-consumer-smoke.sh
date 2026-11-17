@@ -60,7 +60,7 @@ printf 'fn main() {}\n' > "$scratch/src/main.rs"
 
 metadata="$scratch/metadata.json"
 consumer_target=${GIT_CONSUMER_TARGET_DIR:-$scratch/target}
-CARGO_TARGET_DIR="$consumer_target" cargo metadata \
+CARGO_TARGET_DIR="$consumer_target" cargo +1.99.0 metadata \
   --format-version 1 \
   --manifest-path "$scratch/Cargo.toml" > "$metadata"
 
@@ -193,5 +193,5 @@ if jq -e '.packages[] | select(.name == "midnight-did-uniffi")' "$metadata" >/de
   exit 1
 fi
 
-CARGO_TARGET_DIR="$consumer_target" cargo check \
+CARGO_TARGET_DIR="$consumer_target" cargo +1.99.0 check \
   --manifest-path "$scratch/Cargo.toml"
