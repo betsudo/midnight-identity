@@ -6,7 +6,7 @@ SPDX-License-Identifier: Apache-2.0
 
 # midnight-identity — Architecture Overview
 
-Status: living document. Last updated 2026-06-26.
+Status: living document. Last updated 2026-11-17.
 
 `midnight-identity` is the Rust port of the Midnight DID Method reference
 implementation (TypeScript: `@midnight-ntwrk/midnight-did`). This document
@@ -101,7 +101,7 @@ codegen blocks closed (v0.3.0 compact pin bump to `960fc26`).
                  │ compactc --rust output        │
                  │ + Contract<B: Backend>        │
                  │ + DidContractCall enum        │
-                 │ + LiveBackend (stub)          │
+                 │ + Ledger9 provider boundary   │
                  │ + RecordingBackend            │
                  │ + ResolverBackend             │
                  └──────────────┬────────────────┘
@@ -133,22 +133,24 @@ top of the domain + method crates. The 12 operation builders take
 `Contract<RecordingBackend>` and assert on the recorded
 `DidContractCall` envelope.
 
-**`midnight-did-runtime`** is the codegen target. The patched
-`compactc --rust` emits
-`crates/midnight-did-runtime/src/contract/generated.rs`, which now
-compiles `cargo check`-clean for the full `did.compact` source (v0.3.0
-`960fc26` compact pin closed the last codegen + halo2 gaps). On top of
-the generated module the crate ships:
+**`midnight-did-runtime`** is the codegen target. The signed Rust AST
+compiler emits `crates/midnight-did-runtime/src/contract/generated.rs` from
+the exact `midnight-did` `v1.0.0-rc1` contract. The generated crate-root
+modules use the Ledger 9 runtime ABI; `contract` provides their stable
+namespaced re-export. On top of the generated module the crate ships:
 
-- `Contract<B: Backend>` — concrete wrapper, 12 inherent async methods
-  (one per exported `did.compact` circuit). Each method builds a typed
-  `DidContractCall` variant, encodes via `bincode`, and submits via
-  `B::submit_tx`. See [ADR 0008](./adr/0008-contract-abstraction-reform.md).
+- `Contract<B: Backend>` — concrete wrapper with 12 inherent async methods,
+  one per exported `did.compact` circuit. Each method builds a validated
+  `DidContractCall`, encodes the in-process request as JSON, and submits it
+  through `B::submit_tx`. The JSON envelope is not a ledger transaction.
 - `Backend` trait — 3 methods (`submit_tx`, `read_state`,
-  `read_snapshot`). Implementations: `LiveBackend` (production Ledger8
-  provider pipeline for wallet/proof/node/indexer submission plus read-only
-  restart reconciliation), `RecordingBackend` (Mutex-guarded in-memory recorder
-  used by tests), `ResolverBackend` (read-only).
+  `read_snapshot`). Implementations: `LiveBackend` (injected Ledger 9
+  execution and indexer ports), `RecordingBackend` (Mutex-guarded in-memory
+  recorder used by tests), and `ResolverBackend` (read-only). `LiveBackend`
+  retains a finalized receipt when indexer reconciliation fails so callers can
+  reconcile after restart without resubmission. This repository does not yet
+  provide the concrete funded wallet/proof/node implementation of the Ledger 9
+  execution port.
 - `DidContractCall` — 14-variant tagged enum carrying typed circuit
   invocations through `BuiltTx::bytes`. Payload shapes mirror the
   arguments of each exported `did.compact` circuit 1:1.
@@ -182,15 +184,15 @@ of the `uniffi` proc-macro deps.
 
 ## 4. Key design patterns
 
-### 4.1 `Contract<B: Backend>` over `BuiltTx::bytes` (v0.4.0)
+### 4.1 `Contract<B: Backend>` and the Ledger 9 provider boundary
 
-The api crate's operation builders take `&Contract<B: Backend>`
-directly. `Contract<B>` is a concrete wrapper struct living in
-`midnight-did-runtime` with one async inherent method per exported
-`did.compact` circuit (12 total). Each method:
+The api crate's operation builders take `&Contract<B: Backend>` directly.
+`Contract<B>` lives in `midnight-did-runtime` and has one async inherent method
+per exported `did.compact` circuit. Each method:
 
 1. Builds a typed `DidContractCall` variant from its arguments.
-2. Encodes the variant via `bincode` into `BuiltTx { bytes: Vec<u8> }`.
+2. Encodes the validated in-process request as JSON in
+   `BuiltTx { bytes: Vec<u8> }`.
 3. Hands the `BuiltTx` to `self.backend.submit_tx(tx)`.
 
 `Backend` is a 3-method async trait: `submit_tx`, `read_state`
@@ -198,11 +200,14 @@ directly. `Contract<B>` is a concrete wrapper struct living in
 `DidLedgerSnapshot` for the api surface). Three implementations
 ship:
 
-- **`LiveBackend`** — production target. `submit_tx` executes generated
-  Compact proof material through injected Ledger8 wallet/proof/node/indexer
-  providers, and `read_snapshot` resolves through the indexer mapping. Restart
-  code can recreate providers and call `reconcile_finality` with the persisted
-  node receipt to avoid duplicate submission while waiting for the indexer.
+- **`LiveBackend`** — provider-composed Ledger 9 boundary. A
+  `Ledger9DidProvider` must invoke generated Rust execution, build a
+  positive-fee transaction, prove it, submit it, and return durable node
+  finality. `LedgerIndexerProvider` supplies state/snapshot reads and confirms
+  that finality is visible. When that confirmation fails, `BackendError`
+  retains the finality receipt for restart reconciliation without transaction
+  resubmission. The concrete wallet/proof/node provider remains a deployment
+  gap and generated-code tests do not qualify it.
 - **`RecordingBackend`** — Mutex-guarded in-memory recorder used by
   every integration test. `submit_tx` decodes the bytes back into a
   `DidContractCall` and appends to an internal `Vec<DidContractCall>`
@@ -216,16 +221,15 @@ crate) is gone — tests construct
 `Contract::new(RecordingBackend::with_snapshot(snapshot), addr, network)`
 directly.
 
-**Path 2 rationale.** The R2 design spec
+**Envelope rationale.** The R2 design spec
 ([`doc/specs/2026-06-24-r2-contract-abstraction-design.md`](./specs/2026-06-24-r2-contract-abstraction-design.md))
-originally called for `Contract<B>` to delegate to
-`generated::Contract<PS, W>::<circuit>`. That delegation requires the
-wallet+proof+indexer bridge to be in place. Path 2 sidesteps the
-dependency: `DidContractCall` carries the typed call surface through
-`BuiltTx::bytes`, so the Rust-facing API shape is final today, test
-coverage rides on `RecordingBackend`, and production callers will
-swap in `LiveBackend` once the bridge ships. See
-[ADR 0008](./adr/0008-contract-abstraction-reform.md).
+originally called for `Contract<B>` to delegate directly to generated
+execution. `DidContractCall` preserves the stable Rust-facing operation shape
+for recording and injected providers. Production providers must translate it
+into generated Ledger 9 execution and a real transaction; submitting the JSON
+bytes is forbidden. See [ADR 0008](./adr/0008-contract-abstraction-reform.md)
+for the original abstraction and [ADR 0012](./adr/0012-ledger9-did-rust-ast.md)
+for the Ledger 9 qualification boundary.
 
 ### 4.1a Builder + decode validation gate (v0.4.1)
 

@@ -2,7 +2,25 @@
 
 SPDX-License-Identifier: Apache-2.0
 
-## Implemented shape in this worktree
+## Current Ledger 9 status
+
+The DID runtime now targets the exact Ledger 9.1.0.2 graph recorded in
+[ADR 0012](../adr/0012-ledger9-did-rust-ast.md). `LiveBackend` has no
+production `todo!()` paths: it delegates deployment and generated DID calls to
+an injected `Ledger9DidProvider`, delegates reads and finality reconciliation
+to an injected `LedgerIndexerProvider`, retains durable finality receipts when
+reconciliation fails, and decodes Indexer API v4 state into
+`DidLedgerSnapshot`.
+
+There is not yet a concrete Ledger 9 custody/wallet/proof/node provider in this
+repository. The provider contract requires generated-circuit execution,
+positive-fee balancing, proving, submission, finality, and independent indexer
+reconciliation, but generated-code, recording-backend, and service protocol
+tests do not establish that funded live lifecycle. The historical Ledger 8
+implementation below therefore remains evidence for PR #101 only; its types,
+pins, and validation receipts are not the current Ledger 9 runtime contract.
+
+## Historical PR #101 Ledger 8 implementation
 
 `midnight-did-runtime::LiveBackend` is dependency-injected. Mutating calls run:
 
@@ -165,7 +183,9 @@ Result: failed intentionally before any deploy/create claim. Evidence:
 - node `system_health`: healthy / not syncing;
 - node `midnight_ledgerVersion`: `=8.0.2`;
 - node RPC methods include `author_submitExtrinsic`, `chain_getFinalizedHead`, `chain_getBlock`, and `midnight_contractState`;
-- indexer GraphQL schema includes `contractAction` at `/api/v3/graphql`;
+- indexer GraphQL schema includes `contractAction` at the then-current
+  `/api/v3/graphql` Ledger 8 endpoint (historical receipt; the Ledger 9 client
+  default is v4);
 - proof server `/health` returns HTTP 200;
 - no wallet/funding/balancing/signing API is exposed by the node/indexer/proof-server stack (`wallet_like` RPC method set was empty), and no `MIDNIGHT_DID_LEDGER8_WALLET_PROVIDER_URL` was supplied.
 
@@ -283,7 +303,7 @@ pre-push gaps while leaving the Compact pin unchanged:
   low-limb compatibility, and a high-field digest test proves high bytes affect
   the signature and verify without collapse.
 - `HttpIndexerProvider` normalizes roots, trailing slashes, `/graphql`, and
-  already-canonical endpoints to exactly one `/api/v3/graphql` path, and the
+  already-canonical endpoints to exactly one `/api/v4/graphql` path, and the
   protocol probe/lifecycle use the same runtime normalizer.
 - Rotation now promotes the finalized rotation seed into signer/private custody
   before deactivation, and the lifecycle asserts the resolved controller

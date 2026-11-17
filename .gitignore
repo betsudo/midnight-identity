@@ -13,6 +13,7 @@
 /third_party/midnight-zk
 /third_party/compact-runtime-rs
 /third_party/compact/
+/third_party/compact-did/
 
 # Editor / OS
 .idea
@@ -40,3 +41,7 @@ docs/superpowers/
 .env.*
 !.env.example
 !infra/*.env.example
+
+# Repo-local Midnight indexer credentials. Keep these stable when reusing the
+# Compose-managed indexer volume; only the example is committed.
+/infra/.midnight-indexer.env

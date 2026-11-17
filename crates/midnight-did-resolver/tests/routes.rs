@@ -14,9 +14,9 @@
 // limitations under the License.
 
 //! End-to-end route tests against a mock indexer serving REAL captured
-//! chain state (`tests/fixtures/state-050-enriched.hex` — a 0.5.0 DID
-//! deployed on the standalone stack with a JWK verification method and
-//! an authentication relation; address in the sibling `.addr` file).
+//! Ledger 9 contract state (`tests/fixtures/state-ledger9-enriched.hex`) with
+//! a JWK verification method and authentication relation; its address is in
+//! the sibling `.addr` file.
 
 use std::sync::Arc;
 
@@ -26,8 +26,8 @@ use axum::{Json, Router};
 use midnight_did_resolver::{ResolverConfig, ResolverService, build_router};
 use serde_json::{Value, json};
 
-const STATE_HEX: &str = include_str!("fixtures/state-050-enriched.hex");
-const ADDR: &str = include_str!("fixtures/state-050-enriched.addr");
+const STATE_HEX: &str = include_str!("fixtures/state-ledger9-enriched.hex");
+const ADDR: &str = include_str!("fixtures/state-ledger9-enriched.addr");
 
 fn fixture_addr() -> String {
     ADDR.trim().to_string()
@@ -45,14 +45,14 @@ async fn spawn_mock_indexer() -> String {
         }
     }
     let router = Router::new()
-        .route("/api/v3/graphql", post(graphql))
+        .route("/api/v4/graphql", post(graphql))
         .with_state(fixture_addr());
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
     let port = listener.local_addr().unwrap().port();
     tokio::spawn(async move {
         axum::serve(listener, router).await.unwrap();
     });
-    format!("http://127.0.0.1:{port}/api/v3/graphql")
+    format!("http://127.0.0.1:{port}/api/v4/graphql")
 }
 
 async fn spawn_resolver(indexer_url: String) -> String {
@@ -165,7 +165,7 @@ async fn network_mismatch_is_400() {
 #[tokio::test]
 async fn indexer_down_is_internal_error_500() {
     // Point at a port with nothing listening.
-    let base = spawn_resolver("http://127.0.0.1:1/api/v3/graphql".into()).await;
+    let base = spawn_resolver("http://127.0.0.1:1/api/v4/graphql".into()).await;
     let did = format!("did:midnight:undeployed:{}", fixture_addr());
     let resp = reqwest::get(format!("{base}/resolve/{did}")).await.unwrap();
     assert_eq!(resp.status(), 500);

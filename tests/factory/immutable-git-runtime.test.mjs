@@ -11,6 +11,11 @@ import { fileURLToPath } from "node:url";
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const ledgerRevision = "8655615e7c4cbf3a1187b3203bf72e69dc09b8dc";
 const compactRevision = "32e314770da10cc62dab30dcfeb340ec4c6bcb64";
+const didRevision = "750268664278c162e9171406983dc45f24bb5be7";
+const didCompactRevision = "d6513a24debac14d43a8199460d9dc2c6d9af2b1";
+const ledger9Revision = "6fbc2e3900845a858f70eebf8a0deab1d4d3c0d6";
+const ledger9ZkRevision = "bca8db4d9e2c1ecaa5d1db5ba7a201935b6c6c8a";
+const ledger9ZkirRevision = "3377ad9e48741f60e0aa17010b6f23e34223d906";
 const proofsRevision = "532629b044a88473a7175f4a96c2511c91156136";
 const ledgerVersions = new Map([
   ["midnight-base-crypto", "1.0.1"],
@@ -35,8 +40,18 @@ function exactGitDependency(name, repository, revision) {
   return new RegExp(`^${escaped(name)}\\s*=\\s*\\{[^}]*git\\s*=\\s*"${escaped(repository)}"[^}]*rev\\s*=\\s*"${revision}"[^}]*\\}`, "mu");
 }
 
+function exactGitPatch(alias, packageName, version, repository, revision) {
+  return new RegExp(
+    `^${escaped(alias)}\\s*=\\s*\\{[^}]*package\\s*=\\s*"${escaped(packageName)}"[^}]*version\\s*=\\s*"=${escaped(version)}"[^}]*git\\s*=\\s*"${escaped(repository)}"[^}]*rev\\s*=\\s*"${revision}"[^}]*\\}`,
+    "mu",
+  );
+}
+
 test("published workspace dependencies use one immutable Ledger and Compact graph", async () => {
-  const manifest = await readFile(path.join(root, "Cargo.toml"), "utf8");
+  const [manifest, didRuntimeManifest] = await Promise.all([
+    readFile(path.join(root, "Cargo.toml"), "utf8"),
+    readFile(path.join(root, "crates", "midnight-did-runtime", "Cargo.toml"), "utf8"),
+  ]);
   const ledgerRepository = "https://github.com/MediaNoxLabs/midnight-ledger.git";
   for (const crate of ledgerCrates) {
     const matches = manifest.match(new RegExp(exactGitDependency(crate, ledgerRepository, ledgerRevision), "gmu")) ?? [];
@@ -48,9 +63,36 @@ test("published workspace dependencies use one immutable Ledger and Compact grap
       exactGitDependency(alias, "https://github.com/MediaNoxLabs/compact.git", compactRevision),
     );
   }
+  assert.match(manifest, new RegExp(`midnight-proofs-ledger8[\\s\\S]*?rev\\s*=\\s*"${proofsRevision}"`, "u"));
+  for (const packageName of [
+    "midnight-base-crypto",
+    "midnight-coin-structure",
+    "midnight-onchain-runtime",
+    "midnight-serialize",
+    "midnight-storage",
+    "midnight-transient-crypto",
+  ]) {
+    assert.match(didRuntimeManifest, exactGitDependency(packageName, "https://github.com/betsudo/midnight-ledger", ledger9Revision));
+  }
+  assert.match(
+    didRuntimeManifest,
+    exactGitDependency("midnight-ledger", "https://github.com/betsudo/midnight-ledger", ledger9Revision),
+  );
+  for (const alias of [
+    "midnight-circuits-ledger9",
+    "midnight-curves-ledger9",
+    "midnight-proofs-ledger9",
+    "midnight-zk-stdlib-ledger9",
+  ]) assert.doesNotMatch(manifest, new RegExp(escaped(alias), "u"));
   assert.match(
     manifest,
-    exactGitDependency("midnight-proofs", "https://github.com/MediaNoxLabs/midnight-zk.git", proofsRevision),
+    exactGitPatch(
+      "midnight-zkir-ledger9",
+      "midnight-zkir",
+      "3.2.1",
+      "https://github.com/betsudo/midnight-zkir",
+      ledger9ZkirRevision,
+    ),
   );
   assert.doesNotMatch(manifest, /path\s*=\s*"third_party\/(?:midnight-ledger|compact)/u);
 });
@@ -64,6 +106,20 @@ test("the obsolete downstream Ledger source-lock shim stays removed", async () =
   assert.doesNotMatch(runtimeManifest, /midnight-ledger-source-lock/u);
 });
 
+test("generated DID ZKIR provenance names the exact Ledger 9 source graph", async () => {
+  const provenance = await readFile(
+    path.join(root, "crates", "midnight-did-runtime", "assets", "keys", "README.md"),
+    "utf8",
+  );
+  for (const revision of [didRevision, didCompactRevision, ledger9Revision, ledger9ZkRevision, ledger9ZkirRevision]) {
+    assert.match(provenance, new RegExp(revision, "u"));
+  }
+  assert.match(provenance, /rust-compatibility\.json/u);
+  assert.match(provenance, /--skip-zk/u);
+  assert.doesNotMatch(provenance, /42a8e4aca1c6043f7f2b73463fa3aa3cd3d48b06/u);
+  assert.doesNotMatch(provenance, /55ba765f5484a47d9184824a619f93893448c740/u);
+});
+
 test("Nix pins the same immutable sources and exposes only opt-in Cargo overrides", async () => {
   const [flake, rustTools, wrapper] = await Promise.all([
     readFile(path.join(root, "flake.nix"), "utf8"),
@@ -75,12 +131,22 @@ test("Nix pins the same immutable sources and exposes only opt-in Cargo override
     flake,
     new RegExp(`compact-runtime\\s*=\\s*\\{[\\s\\S]*?rev\\s*=\\s*"${compactRevision}"`, "u"),
   );
+  assert.match(
+    flake,
+    new RegExp(`midnight-ledger-v9\\s*=\\s*\\{[\\s\\S]*?rev\\s*=\\s*"${ledger9Revision}"`, "u"),
+  );
+  for (const input of ["compact-runtime-did", "compact-did"]) {
+    assert.match(
+      flake,
+      new RegExp(`${input}\\s*=\\s*\\{[\\s\\S]*?rev\\s*=\\s*"${didCompactRevision}"`, "u"),
+    );
+  }
   assert.match(flake, new RegExp(`rev\\s*=\\s*"${proofsRevision}"`, "u"));
   assert.match(rustTools, /"aarch64-apple-ios-sim"/u);
-  assert.match(wrapper, /patch\.crates-io/u);
-  assert.match(wrapper, /patch\.\\"https:\/\/github\.com\/MediaNoxLabs\/midnight-ledger\.git\\"/u);
-  assert.match(wrapper, /patch\.\\"https:\/\/github\.com\/MediaNoxLabs\/compact\.git\\"/u);
-  for (const crate of ledgerCrates) assert.match(wrapper, new RegExp(escaped(crate), "u"));
+  assert.match(wrapper, /third_party\/compact-did/u);
+  assert.match(wrapper, /paths=\[/u);
+  assert.doesNotMatch(wrapper, /patch\.crates-io/u);
+  assert.doesNotMatch(wrapper, /third_party\/midnight-ledger/u);
 });
 
 test("clean external-consumer smoke is wired into CI and documents its supported cone", async () => {
@@ -91,23 +157,41 @@ test("clean external-consumer smoke is wired into CI and documents its supported
   ]);
   await access(path.join(root, "scripts", "cargo-with-nix-overrides.sh"));
   assert.match(script, /mktemp/u);
-  assert.match(script, /cargo metadata/u);
-  assert.match(script, /cargo check/u);
+  assert.match(script, /rustup run 1\.99\.0 cargo/u);
+  assert.match(script, /active_rustc.*rustc --version/u);
+  assert.match(script, /"\$\{cargo_1_99\[@\]\}" metadata/u);
+  assert.match(script, /"\$\{cargo_1_99\[@\]\}" check/u);
   assert.match(script, /midnight-did-runtime/u);
-  assert.match(script, /features\s*=\s*\[\s*"http"\s*,\s*"node-subxt"\s*\]/u);
-  assert.match(script, new RegExp(ledgerRevision, "u"));
-  assert.match(script, new RegExp(proofsRevision, "u"));
+  assert.match(script, /features\s*=\s*\[\s*"ledger-transaction"\s*\]/u);
+  assert.doesNotMatch(script, /\[patch\.crates-io\]/u);
+  assert.match(script, new RegExp(didCompactRevision, "u"));
+  for (const name of [
+    "midnight-circuits-ledger9",
+    "midnight-curves-ledger9",
+    "midnight-proofs-ledger9",
+    "midnight-zk-stdlib-ledger9",
+  ]) assert.doesNotMatch(script, new RegExp(escaped(name), "u"));
+  for (const [name, version] of [
+    ["midnight-ledger-v9", "1.0.2"],
+    ["midnight-proofs", "0.8.2"],
+    ["midnight-storage", "3.1.0"],
+    ["midnight-zk-stdlib", "2.4.0"],
+  ]) {
+    assert.match(script, new RegExp(`${escaped(name)}\\s+${escaped(version)}`, "u"));
+  }
   assert.match(workflow, /bash scripts\/ci\/git-consumer-smoke\.sh/u);
   assert.match(workflow, /--target aarch64-apple-ios-sim/u);
   assert.match(workflow, /xcrun --sdk iphonesimulator --show-sdk-path/u);
+  assert.match(script, new RegExp(ledger9Revision, "u"));
+  assert.match(script, new RegExp(ledger9ZkRevision, "u"));
+  assert.match(script, new RegExp(ledger9ZkirRevision, "u"));
   for (const phrase of [
     "Immutable Git consumption",
     "default feature set is empty",
-    "`http`",
-    "`node-subxt`",
-    "Cargo does not inherit `[patch]` tables",
-    compactRevision,
-    proofsRevision,
+    "`ledger-transaction`",
+    "no application-root ZK patch table",
+    "patch-free ZK source graph",
+    didCompactRevision,
     "cargo-with-nix-overrides.sh",
   ]) assert.ok(documentation.includes(phrase), phrase);
 });

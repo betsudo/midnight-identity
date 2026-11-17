@@ -34,7 +34,7 @@ secret-storage + VitePress docs; pinned to the same midnight-did
   `endpoint|ws|network` (no result caching — resolution is always
   live); 15 s resolve timeout; 64 KB body limit; security headers.
 - Config via env: `RESOLVER_HOST/PORT`, `MIDNIGHT_INDEXER_HTTP_URL`
-  (`.../api/v3/graphql`), `MIDNIGHT_INDEXER_WS_URL`,
+  (`.../api/v4/graphql`), `MIDNIGHT_INDEXER_WS_URL`,
   `MIDNIGHT_NETWORK` (optional expected-network guard). Docker image on
   ghcr with SBOM/provenance.
 

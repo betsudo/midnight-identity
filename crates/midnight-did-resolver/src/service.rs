@@ -55,6 +55,12 @@ impl ResolverService {
         did: &str,
         indexer_override: Option<&str>,
     ) -> Result<ResolvedMidnightDid, ResolutionError> {
+        if self.config.timeout_ms == 0 {
+            return Err(ResolutionError::new(
+                ResolutionErrorCode::InternalError,
+                "resolution timed out after 0ms",
+            ));
+        }
         let fut = self.resolve_inner(did, indexer_override);
         match tokio::time::timeout(std::time::Duration::from_millis(self.config.timeout_ms), fut).await {
             Ok(result) => result,
@@ -114,6 +120,15 @@ impl ResolverService {
         let state = charged_state_from_bytes(&bytes).map_err(|e| ResolutionError::new(InternalError, e.to_string()))?;
         let snapshot =
             decode_ledger_snapshot(&state).map_err(|e| ResolutionError::new(InternalError, e.to_string()))?;
+        if !snapshot.id_hex.eq_ignore_ascii_case(&address_hex) {
+            return Err(ResolutionError::new(
+                InternalError,
+                format!(
+                    "indexed contract id {} does not match requested DID address {address_hex}",
+                    snapshot.id_hex
+                ),
+            ));
+        }
 
         let did_document = ledger_state_to_did_document(&snapshot, network, &address_hex)
             .map_err(|e| ResolutionError::new(InternalError, e.to_string()))?;

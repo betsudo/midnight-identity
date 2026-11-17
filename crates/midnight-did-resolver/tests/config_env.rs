@@ -53,7 +53,7 @@ fn from_env_covers_defaults_overrides_and_errors() {
     let cfg = ResolverConfig::from_env().expect("empty env is valid");
     assert_eq!(cfg.host, "127.0.0.1");
     assert_eq!(cfg.port, 3001);
-    assert_eq!(cfg.indexer_url, "http://127.0.0.1:8088/api/v3/graphql");
+    assert_eq!(cfg.indexer_url, "http://127.0.0.1:8088/api/v4/graphql");
     assert_eq!(cfg.expected_network, None);
     assert_eq!(cfg.timeout_ms, 15_000);
     assert!(cfg.allow_private_indexer_overrides);
@@ -61,14 +61,14 @@ fn from_env_covers_defaults_overrides_and_errors() {
     // ── every var set to a valid value ───────────────────────────────
     set("RESOLVER_HOST", "0.0.0.0");
     set("RESOLVER_PORT", "8080");
-    set("MIDNIGHT_INDEXER_HTTP_URL", "https://indexer.example/api/v3/graphql");
+    set("MIDNIGHT_INDEXER_HTTP_URL", "https://indexer.example/api/v4/graphql");
     set("MIDNIGHT_NETWORK", "testnet");
     set("RESOLVER_TIMEOUT_MS", "2500");
     set("RESOLVER_ALLOW_PRIVATE_INDEXER", "false");
     let cfg = ResolverConfig::from_env().expect("valid overrides parse");
     assert_eq!(cfg.host, "0.0.0.0");
     assert_eq!(cfg.port, 8080);
-    assert_eq!(cfg.indexer_url, "https://indexer.example/api/v3/graphql");
+    assert_eq!(cfg.indexer_url, "https://indexer.example/api/v4/graphql");
     assert_eq!(cfg.expected_network, Some(MidnightNetwork::Testnet));
     assert_eq!(cfg.timeout_ms, 2500);
     assert!(!cfg.allow_private_indexer_overrides);

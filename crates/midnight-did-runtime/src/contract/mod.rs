@@ -4,8 +4,6 @@
 //! `third_party/midnight-did/packages/contract/src/did.compact` or after bumping
 //! the compact flake input.
 
-#![allow(missing_docs)] // generated module has its own docs
+#![allow(missing_docs)] // generated modules have their own docs
 
-mod generated;
-
-pub use generated::*;
+pub use crate::{ledger_contract, ledger_slots, pure_circuits, runtime, types};

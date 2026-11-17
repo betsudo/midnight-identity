@@ -32,9 +32,8 @@
     non_upper_case_globals
 )]
 
-use std::marker::PhantomData;
-
 use midnight_compact_runtime::*;
+use std::marker::PhantomData;
 
 midnight_compact_runtime::check_runtime_version!("0.16.102");
 

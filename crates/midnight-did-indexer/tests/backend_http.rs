@@ -15,8 +15,8 @@
 
 //! `IndexerBackend` read-path tests against a local mock GraphQL server
 //! serving REAL captured chain state
-//! (`tests/fixtures/state-050-enriched.hex` — same capture as the
-//! resolver crate's route tests: a 0.5.0 DID from the standalone stack
+//! (`tests/fixtures/state-ledger9-enriched.hex` — same capture as the
+//! resolver crate's route tests: a generated Ledger 9 DID state
 //! with a JWK verification method and an authentication relation).
 
 use axum::http::StatusCode;
@@ -28,8 +28,8 @@ use midnight_did_runtime::backend::{Backend, BackendError, BuiltTx};
 use midnight_did_runtime::state_decode::decode_ledger_snapshot;
 use serde_json::{Value, json};
 
-const STATE_HEX: &str = include_str!("fixtures/state-050-enriched.hex");
-const ADDR: &str = include_str!("fixtures/state-050-enriched.addr");
+const STATE_HEX: &str = include_str!("fixtures/state-ledger9-enriched.hex");
+const ADDR: &str = include_str!("fixtures/state-ledger9-enriched.addr");
 
 fn fixture_addr() -> String {
     ADDR.trim().to_string()
@@ -41,6 +41,9 @@ enum MockReply {
     /// Fixture state for the fixture address, `contractAction: null`
     /// for any other address.
     Fixture,
+    /// Fixture state regardless of the requested address, simulating a
+    /// misconfigured or hostile indexer.
+    MismatchedFixture,
     /// A GraphQL `errors` array (HTTP 200).
     GraphQlErrors,
     /// Plain HTTP 500 with a non-GraphQL body.
@@ -64,6 +67,9 @@ impl MockReply {
                     Json(json!({"data": {"contractAction": null}})).into_response()
                 }
             }
+            MockReply::MismatchedFixture => {
+                Json(json!({"data": {"contractAction": {"state": STATE_HEX.trim()}}})).into_response()
+            }
             MockReply::GraphQlErrors => {
                 Json(json!({"errors": [{"message": "boom"}, {"message": "bang"}]})).into_response()
             }
@@ -80,7 +86,7 @@ impl MockReply {
 /// Spawn a one-route GraphQL mock and return its endpoint URL.
 async fn spawn_mock(reply: MockReply) -> String {
     let router = Router::new().route(
-        "/api/v3/graphql",
+        "/api/v4/graphql",
         post(move |Json(body): Json<Value>| async move { reply.respond(&body) }),
     );
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
@@ -88,7 +94,7 @@ async fn spawn_mock(reply: MockReply) -> String {
     tokio::spawn(async move {
         axum::serve(listener, router).await.unwrap();
     });
-    format!("http://127.0.0.1:{port}/api/v3/graphql")
+    format!("http://127.0.0.1:{port}/api/v4/graphql")
 }
 
 async fn backend_for(reply: MockReply, address: &str) -> IndexerBackend {
@@ -137,6 +143,19 @@ async fn unknown_address_is_backend_other() {
 }
 
 #[tokio::test]
+async fn snapshot_contract_id_must_match_requested_address() {
+    let requested = "11".repeat(32);
+    let backend = backend_for(MockReply::MismatchedFixture, &requested).await;
+    let err = backend.read_snapshot().await.unwrap_err();
+    match err {
+        BackendError::Decode(message) => {
+            assert!(message.contains("does not match requested address"), "got {message}");
+        }
+        other => panic!("expected Decode, got {other:?}"),
+    }
+}
+
+#[tokio::test]
 async fn graphql_errors_surface_as_network_error() {
     let backend = backend_for(MockReply::GraphQlErrors, &fixture_addr()).await;
     let err = backend.read_snapshot().await.unwrap_err();
@@ -176,7 +195,7 @@ async fn garbage_state_bytes_are_a_decode_error() {
 #[tokio::test]
 async fn connection_refused_is_a_transport_error() {
     // Nothing listens on port 1.
-    let client = IndexerClient::new("http://127.0.0.1:1/api/v3/graphql").unwrap();
+    let client = IndexerClient::new("http://127.0.0.1:1/api/v4/graphql").unwrap();
     let backend = IndexerBackend::new(client, fixture_addr());
     let err = backend.read_snapshot().await.unwrap_err();
     assert_network_err(&err, "indexer transport");
@@ -191,8 +210,8 @@ async fn submit_tx_stays_read_only_even_with_live_mock() {
 
 #[test]
 fn accessors_expose_construction_inputs() {
-    let client = IndexerClient::new("http://example.invalid/api/v3/graphql").unwrap();
-    assert_eq!(client.graphql_url(), "http://example.invalid/api/v3/graphql");
+    let client = IndexerClient::new("http://example.invalid/api/v4/graphql").unwrap();
+    assert_eq!(client.graphql_url(), "http://example.invalid/api/v4/graphql");
     let backend = IndexerBackend::new(client, "00aabb");
     assert_eq!(backend.address_hex(), "00aabb");
 }

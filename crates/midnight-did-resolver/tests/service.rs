@@ -25,8 +25,8 @@ use midnight_did_resolver::error::ResolutionErrorCode;
 use midnight_did_resolver::{ResolverConfig, ResolverService};
 use serde_json::{Value, json};
 
-const STATE_HEX: &str = include_str!("fixtures/state-050-enriched.hex");
-const ADDR: &str = include_str!("fixtures/state-050-enriched.addr");
+const STATE_HEX: &str = include_str!("fixtures/state-ledger9-enriched.hex");
+const ADDR: &str = include_str!("fixtures/state-ledger9-enriched.addr");
 
 fn fixture_addr() -> String {
     ADDR.trim().to_string()
@@ -49,14 +49,27 @@ async fn spawn_mock_indexer() -> String {
         }
     }
     let router = Router::new()
-        .route("/api/v3/graphql", post(graphql))
+        .route("/api/v4/graphql", post(graphql))
         .with_state(fixture_addr());
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
     let port = listener.local_addr().unwrap().port();
     tokio::spawn(async move {
         axum::serve(listener, router).await.unwrap();
     });
-    format!("http://127.0.0.1:{port}/api/v3/graphql")
+    format!("http://127.0.0.1:{port}/api/v4/graphql")
+}
+
+async fn spawn_mismatched_indexer() -> String {
+    async fn graphql() -> Json<Value> {
+        Json(json!({"data": {"contractAction": {"state": STATE_HEX.trim()}}}))
+    }
+    let router = Router::new().route("/api/v4/graphql", post(graphql));
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let port = listener.local_addr().unwrap().port();
+    tokio::spawn(async move {
+        axum::serve(listener, router).await.unwrap();
+    });
+    format!("http://127.0.0.1:{port}/api/v4/graphql")
 }
 
 fn service_with(config: ResolverConfig) -> ResolverService {
@@ -67,7 +80,7 @@ fn service_with(config: ResolverConfig) -> ResolverService {
 async fn offchain_did_is_network_mismatch() {
     // Offchain DIDs never reach the indexer, so a dead default URL is fine.
     let service = service_with(ResolverConfig {
-        indexer_url: "http://127.0.0.1:1/api/v3/graphql".into(),
+        indexer_url: "http://127.0.0.1:1/api/v4/graphql".into(),
         ..ResolverConfig::default()
     });
     let did = format!("did:midnight:offchain:{}", "ab".repeat(32));
@@ -111,7 +124,7 @@ async fn accepted_override_wins_over_default_endpoint() {
     // Default endpoint is dead; only the override can serve the state.
     let mock = spawn_mock_indexer().await;
     let service = service_with(ResolverConfig {
-        indexer_url: "http://127.0.0.1:1/api/v3/graphql".into(),
+        indexer_url: "http://127.0.0.1:1/api/v4/graphql".into(),
         allow_private_indexer_overrides: true,
         ..ResolverConfig::default()
     });
@@ -135,4 +148,20 @@ async fn zero_timeout_is_internal_error() {
     let err = service.resolve(&fixture_did(), None).await.unwrap_err();
     assert_eq!(err.code, ResolutionErrorCode::InternalError);
     assert!(err.detail.contains("timed out"), "got {}", err.detail);
+}
+
+#[tokio::test]
+async fn indexed_contract_id_must_match_requested_did() {
+    let service = service_with(ResolverConfig {
+        indexer_url: spawn_mismatched_indexer().await,
+        ..ResolverConfig::default()
+    });
+    let requested = format!("did:midnight:undeployed:{}", "11".repeat(32));
+    let err = service.resolve(&requested, None).await.unwrap_err();
+    assert_eq!(err.code, ResolutionErrorCode::InternalError);
+    assert!(
+        err.detail.contains("does not match requested DID address"),
+        "got {}",
+        err.detail
+    );
 }

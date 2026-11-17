@@ -10,13 +10,8 @@
     nixpkgs.url      = "github:NixOS/nixpkgs/nixpkgs-unstable";
     rust-overlay.url = "github:oxalica/rust-overlay";
     flake-parts.url  = "github:hercules-ci/flake-parts";
-    # The MAINTAINED ledger-8 line, `ledger-8-patched` (upstream `ledger-8` plus
-    # the curated prover patches), pinned by rev. Until 2026-09-15 this pointed
-    # at the `dioxus-vc-demo` prototype branch (obsolete prototype revision); the maintained line
-    # is what the branch scheme says a consumer should pin, and the swap was
-    # proven first: check, test (48 suites) and the wasm build all green.
-    # This revision adds the mobile-safe storage boundary while preserving the
-    # maintained Ledger8 package and proof revisions.
+    # Retained Ledger 8 source for the independently versioned Passport Vault
+    # evidence leaf. The DID runtime no longer consumes this input.
     midnight-ledger = {
       type  = "github";
       owner = "MediaNoxLabs";
@@ -24,24 +19,21 @@
       rev   = "8655615e7c4cbf3a1187b3203bf72e69dc09b8dc";
       flake = false;
     };
-    # midnight-zk fork providing the patched `midnight-proofs` crate that
-    # `midnight-ledger`'s `transient-crypto` references via [patch.crates-io].
-    # Without this, `cargo build -p midnight-did-runtime` fails on the
-    # ParamsKZG::{read_mmap_arc, write_mmap_companion, read_custom_lazy}
-    # methods that only exist on the patched fork. See ADR 0006.
-    # The MAINTAINED 0.7 zk line, `proofs-0.7-patched` (the consumer line for
-    # ledger-8), pinned by rev — the same rev `ledger-8-patched` itself pins.
-    # This pin is load bearing: Cargo.toml's [patch.crates-io] must name the
-    # same rev or the flake-materialised source and the cargo-built crate
-    # diverge. Until 2026-09-15 this was the pre-scheme `feat/v0.7-h-poly-
-    # streaming` branch at cf60e3cc.
-    # rev 532629b0 is the head of `proofs-0.7-patched` as of 2026-09-16 (aggregator
-    # changelog entry only since 083c8282).
+    # Retained Ledger 8 proof source for the same Passport Vault evidence leaf.
     midnight-zk = {
       type  = "github";
       owner = "MediaNoxLabs";
       repo  = "midnight-zk";
       rev   = "532629b044a88473a7175f4a96c2511c91156136";
+      flake = false;
+    };
+    # Canonical patched Ledger 9.1.0.2 source used by the DID runtime and its
+    # Compact runtime. VC/Passport retain the separate Ledger 8 input above.
+    midnight-ledger-v9 = {
+      type  = "github";
+      owner = "betsudo";
+      repo  = "midnight-ledger";
+      rev   = "6fbc2e3900845a858f70eebf8a0deab1d4d3c0d6";
       flake = false;
     };
     compact = {
@@ -57,10 +49,26 @@
       type  = "github";
       owner = "MediaNoxLabs";
       repo  = "compact";
-      # Native Rust runtime with a single coherent, mobile-safe Ledger8 source
-      # cone. Cargo.toml pins this same revision for non-Nix consumers.
+      # Retained Ledger 8 runtime identity for Passport Vault evidence.
       rev   = "32e314770da10cc62dab30dcfeb340ec4c6bcb64";
       flake = false;
+    };
+    compact-runtime-did = {
+      type  = "github";
+      owner = "betsudo";
+      repo  = "compact";
+      # Native Rust AST runtime from the signed Ledger 9 compatibility
+      # checkpoint. Cargo.toml pins this same revision.
+      rev   = "d6513a24debac14d43a8199460d9dc2c6d9af2b1";
+      flake = false;
+    };
+    compact-did = {
+      type  = "github";
+      owner = "betsudo";
+      repo  = "compact";
+      # DID-only Rust AST compiler. Keep the existing `compact` input for
+      # VC/Passport generation until those packages publish Ledger 9 artifacts.
+      rev   = "d6513a24debac14d43a8199460d9dc2c6d9af2b1";
     };
   };
 

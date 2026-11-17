@@ -23,8 +23,7 @@ path = "src/lib.rs"
 [features]
 default = [  ]
 # Pull in `midnight-did-runtime` (the codegen target). Off by default
-# because the runtime crate currently fails to build against the
-# upstream halo2 snapshot — see ADR 0003 and DID-P2-2.
+# so parsing/document consumers avoid the Ledger/proof dependency cone.
 runtime = [ "dep:midnight-did-runtime" ]
 
 [dependencies]

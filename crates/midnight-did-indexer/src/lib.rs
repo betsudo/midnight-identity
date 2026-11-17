@@ -27,7 +27,7 @@
 //! # async fn demo() -> Result<(), Box<dyn std::error::Error>> {
 //! use midnight_did_indexer::{IndexerBackend, IndexerClient};
 //!
-//! let client = IndexerClient::new("http://127.0.0.1:8088/api/v3/graphql")?;
+//! let client = IndexerClient::new("http://127.0.0.1:8088/api/v4/graphql")?;
 //! let backend = IndexerBackend::new(client, "00aabb…contract-address-hex…");
 //! // hand `backend` to `Contract::new(backend, addr, network)` and resolve.
 //! # Ok(()) }
@@ -76,7 +76,7 @@ pub struct IndexerClient {
 
 impl IndexerClient {
     /// Build a client for the indexer's GraphQL endpoint
-    /// (e.g. `http://127.0.0.1:8088/api/v3/graphql`).
+    /// (e.g. `http://127.0.0.1:8088/api/v4/graphql`).
     pub fn new(graphql_url: impl Into<String>) -> Result<Self, IndexerError> {
         let http = reqwest::Client::builder()
             .timeout(std::time::Duration::from_secs(15))
@@ -171,7 +171,14 @@ impl Backend for IndexerBackend {
 
     async fn read_snapshot(&self) -> Result<DidLedgerSnapshot, BackendError> {
         let state = charged_state_from_bytes(&self.fetch_state_bytes().await?)?;
-        decode_ledger_snapshot(&state)
+        let snapshot = decode_ledger_snapshot(&state)?;
+        if !snapshot.id_hex.eq_ignore_ascii_case(&self.address_hex) {
+            return Err(BackendError::Decode(format!(
+                "indexed contract id {} does not match requested address {}",
+                snapshot.id_hex, self.address_hex
+            )));
+        }
+        Ok(snapshot)
     }
 }
 
@@ -262,7 +269,7 @@ mod tests {
 
     #[tokio::test]
     async fn submit_tx_is_read_only() {
-        let client = IndexerClient::new("http://127.0.0.1:1/api/v3/graphql").unwrap();
+        let client = IndexerClient::new("http://127.0.0.1:1/api/v4/graphql").unwrap();
         let backend = IndexerBackend::new(client, "00");
         let err = backend.submit_tx(BuiltTx { bytes: vec![] }).await.unwrap_err();
         assert!(matches!(err, BackendError::ReadOnly));

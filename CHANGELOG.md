@@ -14,6 +14,29 @@ and the project adheres to [SemVer](https://semver.org/).
 
 ### Changed
 
+- **DID runtime advances to the coordinated Ledger 9.1.0.2 Rust AST graph
+  (issue #107)** — generated bindings and compatibility evidence now use
+  `betsudo/compact@b049407f`, `betsudo/midnight-ledger@f273996e`,
+  `betsudo/midnight-zk@0f9d5c38`, and
+  `betsudo/midnight-zkir@0196bcd6`. The unchanged DID contract source is
+  regenerated with the current AST backend's explicit query-branch lowering;
+  the twelve ZKIR v3 artifacts remain byte-for-byte unchanged.
+  `midnight-storage=3.1.0` removes `sysinfo`
+  from the normal dependency cone, restoring iOS-simulator and Android checks;
+  VC and Passport remain intentionally isolated on their qualified Ledger 8
+  graph. This is a public runtime migration: Ledger 8-specific wallet, proof,
+  node, transaction, and generated-executor DTOs are removed in favor of the
+  `Ledger9DidProvider` execution boundary. A concrete funded Ledger 9 provider
+  is still tracked by issue #9 and is not claimed by this release candidate.
+
+- **Ledger 9 localnet ownership and attachment (issue #107)** — the repo-owned
+  standalone Compose profile now pins the Ledger 9 node, Indexer v4, and proof
+  server by image digest, binds fixed ports to loopback, keeps credentials in
+  an ignored private env file, and persists node/indexer state in named
+  volumes. A guarded owner launcher and read-only attach preflight prevent
+  concurrent sessions from silently replacing the shared stack; DID indexer
+  clients now use the v4 GraphQL endpoint.
+
 - **Native DID runtime Git consumption (issue #103)** —
   `midnight-did-runtime` now resolves its complete Ledger 8 and Compact runtime
   cone from immutable Git revisions, while keeping Nix-materialised path

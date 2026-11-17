@@ -76,8 +76,8 @@ mod tests {
 
     #[test]
     fn rejects_loopback_when_private_disallowed() {
-        assert!(validate_override("http://127.0.0.1:8088/api/v3/graphql", false).is_err());
-        assert!(validate_override("http://localhost:8088/api/v3/graphql", false).is_err());
+        assert!(validate_override("http://127.0.0.1:8088/api/v4/graphql", false).is_err());
+        assert!(validate_override("http://localhost:8088/api/v4/graphql", false).is_err());
         assert!(validate_override("http://10.0.0.5/graphql", false).is_err());
         assert!(validate_override("http://169.254.1.1/graphql", false).is_err());
         assert!(validate_override("http://[::1]:8088/graphql", false).is_err());
@@ -85,7 +85,7 @@ mod tests {
 
     #[test]
     fn allows_loopback_in_dev_mode() {
-        assert!(validate_override("http://127.0.0.1:8088/api/v3/graphql", true).is_ok());
+        assert!(validate_override("http://127.0.0.1:8088/api/v4/graphql", true).is_ok());
     }
 
     #[test]
