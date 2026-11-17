@@ -22,18 +22,18 @@ node-subxt         = [ "dep:futures", "dep:subxt", "dep:tokio" ]
 # The immutable Compact runtime revision is declared at the workspace root.
 # Its sibling macro crate resolves from the same Git checkout. Nix path
 # substitution is available only through the explicit local override wrapper.
-midnight-compact-runtime = { package = "midnight-compact-runtime", git = "https://github.com/betsudo/compact", rev = "b049407fc6e5b68255bced0ed5624e23f585c504", features = [ "experimental-functional" ] }
+midnight-compact-runtime = { package = "midnight-compact-runtime", git = "https://github.com/betsudo/compact", rev = "d6513a24debac14d43a8199460d9dc2c6d9af2b1", features = [ "experimental-functional" ] }
 
 # Exact Ledger 9.1.0.2 source graph needed by generated.rs and the native
 # backend. Shared workspace names remain on the retained VC/Passport graph;
 # every DID dependency uses the same immutable Ledger revision as Compact.
-midnight-base-crypto      = { version = "=1.1.1", git = "https://github.com/betsudo/midnight-ledger", rev = "f273996eaba509aaf5f6d935f2f9df5c8ec98bf2" }
-midnight-coin-structure   = { version = "=3.0.1", git = "https://github.com/betsudo/midnight-ledger", rev = "f273996eaba509aaf5f6d935f2f9df5c8ec98bf2" }
-midnight-onchain-runtime  = { version = "=4.0.1", git = "https://github.com/betsudo/midnight-ledger", rev = "f273996eaba509aaf5f6d935f2f9df5c8ec98bf2" }
-midnight-serialize        = { version = "=1.2.1", git = "https://github.com/betsudo/midnight-ledger", rev = "f273996eaba509aaf5f6d935f2f9df5c8ec98bf2" }
-midnight-ledger           = { package = "midnight-ledger-v9", version = "=1.0.2", git = "https://github.com/betsudo/midnight-ledger", rev = "f273996eaba509aaf5f6d935f2f9df5c8ec98bf2" }
-midnight-storage          = { version = "=3.1.0", git = "https://github.com/betsudo/midnight-ledger", rev = "f273996eaba509aaf5f6d935f2f9df5c8ec98bf2" }
-midnight-transient-crypto = { version = "=3.1.0", git = "https://github.com/betsudo/midnight-ledger", rev = "f273996eaba509aaf5f6d935f2f9df5c8ec98bf2" }
+midnight-base-crypto      = { version = "=1.1.1", git = "https://github.com/betsudo/midnight-ledger", rev = "6fbc2e3900845a858f70eebf8a0deab1d4d3c0d6" }
+midnight-coin-structure   = { version = "=3.0.1", git = "https://github.com/betsudo/midnight-ledger", rev = "6fbc2e3900845a858f70eebf8a0deab1d4d3c0d6" }
+midnight-onchain-runtime  = { version = "=4.0.1", git = "https://github.com/betsudo/midnight-ledger", rev = "6fbc2e3900845a858f70eebf8a0deab1d4d3c0d6" }
+midnight-serialize        = { version = "=1.2.1", git = "https://github.com/betsudo/midnight-ledger", rev = "6fbc2e3900845a858f70eebf8a0deab1d4d3c0d6" }
+midnight-ledger           = { package = "midnight-ledger-v9", version = "=1.0.2", git = "https://github.com/betsudo/midnight-ledger", rev = "6fbc2e3900845a858f70eebf8a0deab1d4d3c0d6" }
+midnight-storage          = { version = "=3.1.0", git = "https://github.com/betsudo/midnight-ledger", rev = "6fbc2e3900845a858f70eebf8a0deab1d4d3c0d6" }
+midnight-transient-crypto = { version = "=3.1.0", git = "https://github.com/betsudo/midnight-ledger", rev = "6fbc2e3900845a858f70eebf8a0deab1d4d3c0d6" }
 # Sibling first-party crates — R2-2 (v0.4.0) lifts ledger-shape types
 # (`DidLedgerSnapshot`, `LedgerVerificationMethod`, `MapMutation`, …) into
 # this crate so `DidContractCall` can carry them as variant payloads. The

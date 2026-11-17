@@ -11,10 +11,10 @@ import { fileURLToPath } from "node:url";
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const ledgerRevision = "8655615e7c4cbf3a1187b3203bf72e69dc09b8dc";
 const compactRevision = "32e314770da10cc62dab30dcfeb340ec4c6bcb64";
-const didCompactRevision = "b049407fc6e5b68255bced0ed5624e23f585c504";
-const ledger9Revision = "f273996eaba509aaf5f6d935f2f9df5c8ec98bf2";
-const ledger9ZkRevision = "0f9d5c3879f92a8beae8bdb9e7305f39e03a3227";
-const ledger9ZkirRevision = "0196bcd68fce3bfcb69914520b9ddaed051d4757";
+const didCompactRevision = "d6513a24debac14d43a8199460d9dc2c6d9af2b1";
+const ledger9Revision = "6fbc2e3900845a858f70eebf8a0deab1d4d3c0d6";
+const ledger9ZkRevision = "bca8db4d9e2c1ecaa5d1db5ba7a201935b6c6c8a";
+const ledger9ZkirRevision = "3377ad9e48741f60e0aa17010b6f23e34223d906";
 const proofsRevision = "532629b044a88473a7175f4a96c2511c91156136";
 const ledgerVersions = new Map([
   ["midnight-base-crypto", "1.0.1"],
@@ -77,17 +77,12 @@ test("published workspace dependencies use one immutable Ledger and Compact grap
     didRuntimeManifest,
     exactGitDependency("midnight-ledger", "https://github.com/betsudo/midnight-ledger", ledger9Revision),
   );
-  for (const [alias, packageName, version] of [
-    ["midnight-circuits-ledger9", "midnight-circuits", "7.3.0"],
-    ["midnight-curves-ledger9", "midnight-curves", "0.3.1"],
-    ["midnight-proofs-ledger9", "midnight-proofs", "0.8.2"],
-    ["midnight-zk-stdlib-ledger9", "midnight-zk-stdlib", "2.4.0"],
-  ]) {
-    assert.match(
-      manifest,
-      exactGitPatch(alias, packageName, version, "https://github.com/betsudo/midnight-zk", ledger9ZkRevision),
-    );
-  }
+  for (const alias of [
+    "midnight-circuits-ledger9",
+    "midnight-curves-ledger9",
+    "midnight-proofs-ledger9",
+    "midnight-zk-stdlib-ledger9",
+  ]) assert.doesNotMatch(manifest, new RegExp(escaped(alias), "u"));
   assert.match(
     manifest,
     exactGitPatch(
@@ -151,14 +146,14 @@ test("clean external-consumer smoke is wired into CI and documents its supported
   assert.match(script, /cargo check/u);
   assert.match(script, /midnight-did-runtime/u);
   assert.match(script, /features\s*=\s*\[\s*"ledger-transaction"\s*\]/u);
-  assert.match(script, /\[patch\.crates-io\]/u);
+  assert.doesNotMatch(script, /\[patch\.crates-io\]/u);
   assert.match(script, new RegExp(didCompactRevision, "u"));
   for (const name of [
     "midnight-circuits-ledger9",
     "midnight-curves-ledger9",
     "midnight-proofs-ledger9",
     "midnight-zk-stdlib-ledger9",
-  ]) assert.match(script, new RegExp(escaped(name), "u"));
+  ]) assert.doesNotMatch(script, new RegExp(escaped(name), "u"));
   for (const [name, version] of [
     ["midnight-ledger-v9", "1.0.2"],
     ["midnight-proofs", "0.8.2"],
@@ -177,8 +172,8 @@ test("clean external-consumer smoke is wired into CI and documents its supported
     "Immutable Git consumption",
     "default feature set is empty",
     "`ledger-transaction`",
-    "explicit application-root ZK patch table",
-    "Cargo does not propagate a library's [patch] table",
+    "no application-root ZK patch table",
+    "patch-free ZK source graph",
     didCompactRevision,
     "cargo-with-nix-overrides.sh",
   ]) assert.ok(documentation.includes(phrase), phrase);

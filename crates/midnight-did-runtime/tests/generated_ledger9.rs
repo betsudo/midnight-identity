@@ -124,11 +124,11 @@ fn generated_compatibility_receipt_pins_ledger9_and_runtime_abi() {
     assert_eq!(receipt["compiler"]["typescript_runtime"], "0.18.0");
     assert_eq!(
         compatibility["ledger_git_sources"]["midnight-ledger-v9"]["rev"],
-        "f273996eaba509aaf5f6d935f2f9df5c8ec98bf2"
+        "6fbc2e3900845a858f70eebf8a0deab1d4d3c0d6"
     );
     assert_eq!(
         compatibility["ledger_git_sources"]["midnight-proofs"]["rev"],
-        "0f9d5c3879f92a8beae8bdb9e7305f39e03a3227"
+        "bca8db4d9e2c1ecaa5d1db5ba7a201935b6c6c8a"
     );
     assert_eq!(
         compatibility["ledger_git_sources"]["midnight-zkir-v2"]["version"],
@@ -136,7 +136,7 @@ fn generated_compatibility_receipt_pins_ledger9_and_runtime_abi() {
     );
     assert_eq!(
         compatibility["ledger_git_sources"]["midnight-zkir-v3"]["rev"],
-        "0196bcd68fce3bfcb69914520b9ddaed051d4757"
+        "3377ad9e48741f60e0aa17010b6f23e34223d906"
     );
     assert_eq!(runtime::LEDGER_VERSION, "ledger-9.1.0.2");
     assert_eq!(runtime::RUST_RUNTIME_ABI, 54);

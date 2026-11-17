@@ -5,10 +5,10 @@
 
 set -euo pipefail
 
-compact_revision=b049407fc6e5b68255bced0ed5624e23f585c504
-ledger_revision=f273996eaba509aaf5f6d935f2f9df5c8ec98bf2
-zk_revision=0f9d5c3879f92a8beae8bdb9e7305f39e03a3227
-zkir_revision=0196bcd68fce3bfcb69914520b9ddaed051d4757
+compact_revision=d6513a24debac14d43a8199460d9dc2c6d9af2b1
+ledger_revision=6fbc2e3900845a858f70eebf8a0deab1d4d3c0d6
+zk_revision=bca8db4d9e2c1ecaa5d1db5ba7a201935b6c6c8a
+zkir_revision=3377ad9e48741f60e0aa17010b6f23e34223d906
 repository_url=https://github.com/MediaNoxLabs/midnight-identity.git
 revision=
 
@@ -55,16 +55,6 @@ publish = false
 
 [dependencies]
 midnight-did-runtime = { git = "$repository_url", rev = "$revision", features = ["ledger-transaction"] }
-
-# The current published blake2b_halo2/sha3-circuit helpers request the proof
-# cohort from crates.io. Cargo patches are scoped to the consumer root, so an
-# application must carry these exact pins until those helpers publish the
-# coordinated Ledger 9 source graph.
-[patch.crates-io]
-midnight-circuits-ledger9 = { package = "midnight-circuits", version = "=7.3.0", git = "https://github.com/betsudo/midnight-zk", rev = "$zk_revision" }
-midnight-curves-ledger9 = { package = "midnight-curves", version = "=0.3.1", git = "https://github.com/betsudo/midnight-zk", rev = "$zk_revision" }
-midnight-proofs-ledger9 = { package = "midnight-proofs", version = "=0.8.2", git = "https://github.com/betsudo/midnight-zk", rev = "$zk_revision" }
-midnight-zk-stdlib-ledger9 = { package = "midnight-zk-stdlib", version = "=2.4.0", git = "https://github.com/betsudo/midnight-zk", rev = "$zk_revision" }
 EOF
 printf 'fn main() {}\n' > "$scratch/src/main.rs"
 

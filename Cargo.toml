@@ -67,17 +67,14 @@ midnight-passport-account        = { path = "crates/midnight-passport-account", 
 midnight-passport-vault-source   = { path = "crates/midnight-passport-vault-source", version = "=0.5.0" }
 
 # The Ledger 8 transient-crypto package relies on this source-compatible
-# proofs fork. Ledger 9 resolves its released 0.8.x proof cohort separately.
+# proofs fork. Ledger 9 keeps only its Ledger and ZKIR source selectors here;
+# the patch-free ZK graph resolves its 0.8.x proof cohort without root patches.
 [patch.crates-io]
 midnight-proofs-ledger8 = { package = "midnight-proofs", git = "https://github.com/MediaNoxLabs/midnight-zk.git", rev = "532629b044a88473a7175f4a96c2511c91156136" }
-midnight-proofs-ledger9 = { package = "midnight-proofs", version = "=0.8.2", git = "https://github.com/betsudo/midnight-zk", rev = "0f9d5c3879f92a8beae8bdb9e7305f39e03a3227" }
-midnight-circuits-ledger9 = { package = "midnight-circuits", version = "=7.3.0", git = "https://github.com/betsudo/midnight-zk", rev = "0f9d5c3879f92a8beae8bdb9e7305f39e03a3227" }
-midnight-zk-stdlib-ledger9 = { package = "midnight-zk-stdlib", version = "=2.4.0", git = "https://github.com/betsudo/midnight-zk", rev = "0f9d5c3879f92a8beae8bdb9e7305f39e03a3227" }
-midnight-curves-ledger9 = { package = "midnight-curves", version = "=0.3.1", git = "https://github.com/betsudo/midnight-zk", rev = "0f9d5c3879f92a8beae8bdb9e7305f39e03a3227" }
-midnight-zkir-ledger9 = { package = "midnight-zkir", version = "=3.2.1", git = "https://github.com/betsudo/midnight-zkir", rev = "0196bcd68fce3bfcb69914520b9ddaed051d4757" }
-midnight-base-crypto-ledger9 = { package = "midnight-base-crypto", version = "=1.1.1", git = "https://github.com/betsudo/midnight-ledger", rev = "f273996eaba509aaf5f6d935f2f9df5c8ec98bf2" }
-midnight-serialize-ledger9 = { package = "midnight-serialize", version = "=1.2.1", git = "https://github.com/betsudo/midnight-ledger", rev = "f273996eaba509aaf5f6d935f2f9df5c8ec98bf2" }
-midnight-transient-crypto-ledger9 = { package = "midnight-transient-crypto", version = "=3.1.0", git = "https://github.com/betsudo/midnight-ledger", rev = "f273996eaba509aaf5f6d935f2f9df5c8ec98bf2" }
+midnight-zkir-ledger9 = { package = "midnight-zkir", version = "=3.2.1", git = "https://github.com/betsudo/midnight-zkir", rev = "3377ad9e48741f60e0aa17010b6f23e34223d906" }
+midnight-base-crypto-ledger9 = { package = "midnight-base-crypto", version = "=1.1.1", git = "https://github.com/betsudo/midnight-ledger", rev = "6fbc2e3900845a858f70eebf8a0deab1d4d3c0d6" }
+midnight-serialize-ledger9 = { package = "midnight-serialize", version = "=1.2.1", git = "https://github.com/betsudo/midnight-ledger", rev = "6fbc2e3900845a858f70eebf8a0deab1d4d3c0d6" }
+midnight-transient-crypto-ledger9 = { package = "midnight-transient-crypto", version = "=3.1.0", git = "https://github.com/betsudo/midnight-ledger", rev = "6fbc2e3900845a858f70eebf8a0deab1d4d3c0d6" }
 
 [profile.dev]
 debug = "limited"

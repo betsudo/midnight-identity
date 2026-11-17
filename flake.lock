@@ -79,17 +79,17 @@
         "zkir": "zkir_2"
       },
       "locked": {
-        "lastModified": 1794942428,
-        "narHash": "sha256-8BmQ9M506NvxfV0xt+l29hTxVW2151QqeRvUHDcP9P0=",
+        "lastModified": 1794952477,
+        "narHash": "sha256-Z7UM69FOS0DWefFGW71GlEz2lYWTOFoi1XnekD2jgM8=",
         "owner": "betsudo",
         "repo": "compact",
-        "rev": "b049407fc6e5b68255bced0ed5624e23f585c504",
+        "rev": "d6513a24debac14d43a8199460d9dc2c6d9af2b1",
         "type": "github"
       },
       "original": {
         "owner": "betsudo",
         "repo": "compact",
-        "rev": "b049407fc6e5b68255bced0ed5624e23f585c504",
+        "rev": "d6513a24debac14d43a8199460d9dc2c6d9af2b1",
         "type": "github"
       }
     },
@@ -113,17 +113,17 @@
     "compact-runtime-did": {
       "flake": false,
       "locked": {
-        "lastModified": 1794942428,
-        "narHash": "sha256-8BmQ9M506NvxfV0xt+l29hTxVW2151QqeRvUHDcP9P0=",
+        "lastModified": 1794952477,
+        "narHash": "sha256-Z7UM69FOS0DWefFGW71GlEz2lYWTOFoi1XnekD2jgM8=",
         "owner": "betsudo",
         "repo": "compact",
-        "rev": "b049407fc6e5b68255bced0ed5624e23f585c504",
+        "rev": "d6513a24debac14d43a8199460d9dc2c6d9af2b1",
         "type": "github"
       },
       "original": {
         "owner": "betsudo",
         "repo": "compact",
-        "rev": "b049407fc6e5b68255bced0ed5624e23f585c504",
+        "rev": "d6513a24debac14d43a8199460d9dc2c6d9af2b1",
         "type": "github"
       }
     },
@@ -446,17 +446,17 @@
     "midnight-ledger-v9": {
       "flake": false,
       "locked": {
-        "lastModified": 1794935056,
-        "narHash": "sha256-mk1qdBHFgNm7KcNGD2UPtaCO1+llcp2u+ene75FuAEU=",
+        "lastModified": 1794950793,
+        "narHash": "sha256-7nPujsILZToXHIBcRemu8NLrxmrg2+QM4sKPsJwGgu0=",
         "owner": "betsudo",
         "repo": "midnight-ledger",
-        "rev": "f273996eaba509aaf5f6d935f2f9df5c8ec98bf2",
+        "rev": "6fbc2e3900845a858f70eebf8a0deab1d4d3c0d6",
         "type": "github"
       },
       "original": {
         "owner": "betsudo",
         "repo": "midnight-ledger",
-        "rev": "f273996eaba509aaf5f6d935f2f9df5c8ec98bf2",
+        "rev": "6fbc2e3900845a858f70eebf8a0deab1d4d3c0d6",
         "type": "github"
       }
     },

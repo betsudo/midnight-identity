@@ -12,7 +12,7 @@ two different compiler products and their version banners must not be treated
 as interchangeable.
 
 The exact Rust source used here is signed commit
-`b049407fc6e5b68255bced0ed5624e23f585c504` from
+`d6513a24debac14d43a8199460d9dc2c6d9af2b1` from
 `betsudo/compact`. It identifies Compact 0.31.215, language 0.28.0,
 TypeScript runtime 0.18.0, runtime ABI 54, IR schema 20, Rust 1.99, and
 the Ledger 9.1.0.2 compatibility matrix recorded in
@@ -26,13 +26,13 @@ The migration is DID-only:
   v1.0.0-rc1 contract source;
 - the DID runtime uses `midnight-compact-runtime` 0.2.0 from the exact compiler
   revision and a single coordinated source graph at
-  `betsudo/midnight-ledger@f273996eaba509aaf5f6d935f2f9df5c8ec98bf2`
-  plus `betsudo/midnight-zk@0f9d5c3879f92a8beae8bdb9e7305f39e03a3227`;
+  `betsudo/midnight-ledger@6fbc2e3900845a858f70eebf8a0deab1d4d3c0d6`
+  plus `betsudo/midnight-zk@bca8db4d9e2c1ecaa5d1db5ba7a201935b6c6c8a`;
 - that graph supplies `midnight-ledger-v9=1.0.2`,
   `midnight-storage=3.1.0`, and `midnight-transient-crypto=3.1.0` without
   mixing registry copies of the same Ledger 9 packages;
 - ZKIR sources are parsed with `midnight-zkir=3.2.1` from
-  `betsudo/midnight-zkir@0196bcd68fce3bfcb69914520b9ddaed051d4757`;
+  `betsudo/midnight-zkir@3377ad9e48741f60e0aa17010b6f23e34223d906`;
   the Ledger-private ZKIR v2 boundary remains `2.2.0` at the same Ledger
   revision and never crosses the DID crate API;
 - generated code is included at crate root because its references are
@@ -87,13 +87,10 @@ graph incorporates the storage correction from `betsudo/midnight-ledger#42`:
 to `stress-test`. Consequently the DID runtime dependency cone is checked for
 both `aarch64-apple-ios-sim` and `aarch64-linux-android` using Rust 1.99. The
 external-consumer smoke test proves that a fresh Git consumer receives the
-same immutable graph when the consumer root supplies the documented exact ZK
-patch table. This application-root contract is necessary because Cargo does
-not propagate a dependency's `[patch.crates-io]` table and the currently
-published `blake2b_halo2` and `sha3-circuit` helpers otherwise select registry
-copies of `midnight-curves` and `midnight-proofs`. The contract is temporary:
-remove it only after those helper releases carry the coordinated Ledger 9
-source graph.
+same immutable graph with no application-root ZK patch table. The patch-free
+ZK source graph carries `blake2b_halo2` and `sha3-circuit` with the coordinated
+`midnight-curves` and `midnight-proofs` packages, while the generated consumer
+retains only the exact Ledger and ZKIR source selectors it actually needs.
 
 The 2026-11-16 local arm64 receipt passed exact DID regeneration, workspace
 formatting, lint with warnings denied, all repository tests (678 first-party

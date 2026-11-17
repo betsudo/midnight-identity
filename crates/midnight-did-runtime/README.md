@@ -62,25 +62,17 @@ midnight-did-runtime = {
   rev = "<immutable-midnight-identity-revision>",
   features = ["ledger-transaction"]
 }
-
-# Temporary application-root source contract for the Ledger 9 proof cohort.
-# Cargo does not propagate a library's [patch] table to its consumers.
-[patch.crates-io]
-midnight-circuits-ledger9 = { package = "midnight-circuits", version = "=7.3.0", git = "https://github.com/betsudo/midnight-zk", rev = "0f9d5c3879f92a8beae8bdb9e7305f39e03a3227" }
-midnight-curves-ledger9 = { package = "midnight-curves", version = "=0.3.1", git = "https://github.com/betsudo/midnight-zk", rev = "0f9d5c3879f92a8beae8bdb9e7305f39e03a3227" }
-midnight-proofs-ledger9 = { package = "midnight-proofs", version = "=0.8.2", git = "https://github.com/betsudo/midnight-zk", rev = "0f9d5c3879f92a8beae8bdb9e7305f39e03a3227" }
-midnight-zk-stdlib-ledger9 = { package = "midnight-zk-stdlib", version = "=2.4.0", git = "https://github.com/betsudo/midnight-zk", rev = "0f9d5c3879f92a8beae8bdb9e7305f39e03a3227" }
 ```
 
 The DID runtime pins the signed Rust AST compiler/runtime source to
-`betsudo/compact@b049407fc6e5b68255bced0ed5624e23f585c504`.
+`betsudo/compact@d6513a24debac14d43a8199460d9dc2c6d9af2b1`.
 Its compiler-emitted receipt selects one coordinated Ledger 9.1.0.2 source
-graph: `betsudo/midnight-ledger@f273996eaba509aaf5f6d935f2f9df5c8ec98bf2`
-and `betsudo/midnight-zk@0f9d5c3879f92a8beae8bdb9e7305f39e03a3227`.
+graph: `betsudo/midnight-ledger@6fbc2e3900845a858f70eebf8a0deab1d4d3c0d6`
+and `betsudo/midnight-zk@bca8db4d9e2c1ecaa5d1db5ba7a201935b6c6c8a`.
 That graph contains `midnight-ledger-v9=1.0.2`, `midnight-storage=3.1.0`,
 `midnight-proofs=0.8.2`, and `midnight-zk-stdlib=2.4.0`. The repository pins
 the compiler-only ZKIR parser to 3.2.1 from
-`betsudo/midnight-zkir@0196bcd68fce3bfcb69914520b9ddaed051d4757`
+`betsudo/midnight-zkir@3377ad9e48741f60e0aa17010b6f23e34223d906`
 and tests all twelve emitted ZKIR v3 sources. VC and Passport remain on their
 existing Compact/Ledger 8 evidence
 graph; their types never cross the DID runtime boundary.
@@ -104,13 +96,12 @@ The standalone probe discovers an already-running shared Ledger 9 stack via
 endpoint. Only its designated owner may invoke `up` or `down`; owner `up`
 attaches first and will not start a duplicate compatible stack.
 
-Immutable Git resolution plus the explicit application-root ZK patch table is
-the portable external-consumer contract. The patch is required because the
-currently published `blake2b_halo2` and `sha3-circuit` helpers request
-`midnight-curves` and `midnight-proofs` from crates.io, while the Ledger 9
-runtime must use the coordinated Git cohort. Remove it only after those helper
-releases carry the same source graph. Inside `nix develop .#rust`, local builds
-may opt into already materialised Nix sources without changing any published
+Immutable Git resolution now works with no application-root ZK patch table.
+The patch-free ZK source graph carries `blake2b_halo2` and `sha3-circuit`
+alongside the coordinated `midnight-curves` and `midnight-proofs` packages, so
+a clean consumer resolves one active proof cohort directly from the pinned
+Ledger and Compact dependencies. Inside `nix develop .#rust`, local builds may
+opt into already materialised Nix sources without changing any published
 manifest:
 
 ```console
