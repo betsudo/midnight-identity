@@ -171,7 +171,14 @@ impl Backend for IndexerBackend {
 
     async fn read_snapshot(&self) -> Result<DidLedgerSnapshot, BackendError> {
         let state = charged_state_from_bytes(&self.fetch_state_bytes().await?)?;
-        decode_ledger_snapshot(&state)
+        let snapshot = decode_ledger_snapshot(&state)?;
+        if !snapshot.id_hex.eq_ignore_ascii_case(&self.address_hex) {
+            return Err(BackendError::Decode(format!(
+                "indexed contract id {} does not match requested address {}",
+                snapshot.id_hex, self.address_hex
+            )));
+        }
+        Ok(snapshot)
     }
 }
 

@@ -59,6 +59,19 @@ async fn spawn_mock_indexer() -> String {
     format!("http://127.0.0.1:{port}/api/v4/graphql")
 }
 
+async fn spawn_mismatched_indexer() -> String {
+    async fn graphql() -> Json<Value> {
+        Json(json!({"data": {"contractAction": {"state": STATE_HEX.trim()}}}))
+    }
+    let router = Router::new().route("/api/v4/graphql", post(graphql));
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let port = listener.local_addr().unwrap().port();
+    tokio::spawn(async move {
+        axum::serve(listener, router).await.unwrap();
+    });
+    format!("http://127.0.0.1:{port}/api/v4/graphql")
+}
+
 fn service_with(config: ResolverConfig) -> ResolverService {
     ResolverService::new(config)
 }
@@ -135,4 +148,20 @@ async fn zero_timeout_is_internal_error() {
     let err = service.resolve(&fixture_did(), None).await.unwrap_err();
     assert_eq!(err.code, ResolutionErrorCode::InternalError);
     assert!(err.detail.contains("timed out"), "got {}", err.detail);
+}
+
+#[tokio::test]
+async fn indexed_contract_id_must_match_requested_did() {
+    let service = service_with(ResolverConfig {
+        indexer_url: spawn_mismatched_indexer().await,
+        ..ResolverConfig::default()
+    });
+    let requested = format!("did:midnight:undeployed:{}", "11".repeat(32));
+    let err = service.resolve(&requested, None).await.unwrap_err();
+    assert_eq!(err.code, ResolutionErrorCode::InternalError);
+    assert!(
+        err.detail.contains("does not match requested DID address"),
+        "got {}",
+        err.detail
+    );
 }

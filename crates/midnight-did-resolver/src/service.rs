@@ -120,6 +120,15 @@ impl ResolverService {
         let state = charged_state_from_bytes(&bytes).map_err(|e| ResolutionError::new(InternalError, e.to_string()))?;
         let snapshot =
             decode_ledger_snapshot(&state).map_err(|e| ResolutionError::new(InternalError, e.to_string()))?;
+        if !snapshot.id_hex.eq_ignore_ascii_case(&address_hex) {
+            return Err(ResolutionError::new(
+                InternalError,
+                format!(
+                    "indexed contract id {} does not match requested DID address {address_hex}",
+                    snapshot.id_hex
+                ),
+            ));
+        }
 
         let did_document = ledger_state_to_did_document(&snapshot, network, &address_hex)
             .map_err(|e| ResolutionError::new(InternalError, e.to_string()))?;

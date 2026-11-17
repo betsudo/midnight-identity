@@ -16,7 +16,7 @@
 //! `IndexerBackend` read-path tests against a local mock GraphQL server
 //! serving REAL captured chain state
 //! (`tests/fixtures/state-ledger9-enriched.hex` — same capture as the
-//! resolver crate's route tests: a 0.5.0 DID from the standalone stack
+//! resolver crate's route tests: a generated Ledger 9 DID state
 //! with a JWK verification method and an authentication relation).
 
 use axum::http::StatusCode;
@@ -41,6 +41,9 @@ enum MockReply {
     /// Fixture state for the fixture address, `contractAction: null`
     /// for any other address.
     Fixture,
+    /// Fixture state regardless of the requested address, simulating a
+    /// misconfigured or hostile indexer.
+    MismatchedFixture,
     /// A GraphQL `errors` array (HTTP 200).
     GraphQlErrors,
     /// Plain HTTP 500 with a non-GraphQL body.
@@ -63,6 +66,9 @@ impl MockReply {
                 } else {
                     Json(json!({"data": {"contractAction": null}})).into_response()
                 }
+            }
+            MockReply::MismatchedFixture => {
+                Json(json!({"data": {"contractAction": {"state": STATE_HEX.trim()}}})).into_response()
             }
             MockReply::GraphQlErrors => {
                 Json(json!({"errors": [{"message": "boom"}, {"message": "bang"}]})).into_response()
@@ -133,6 +139,19 @@ async fn unknown_address_is_backend_other() {
     match err {
         BackendError::Other(msg) => assert!(msg.contains("no contract state"), "got {msg}"),
         other => panic!("expected Other, got {other:?}"),
+    }
+}
+
+#[tokio::test]
+async fn snapshot_contract_id_must_match_requested_address() {
+    let requested = "11".repeat(32);
+    let backend = backend_for(MockReply::MismatchedFixture, &requested).await;
+    let err = backend.read_snapshot().await.unwrap_err();
+    match err {
+        BackendError::Decode(message) => {
+            assert!(message.contains("does not match requested address"), "got {message}");
+        }
+        other => panic!("expected Decode, got {other:?}"),
     }
 }
 
