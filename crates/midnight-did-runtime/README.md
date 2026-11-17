@@ -73,14 +73,14 @@ midnight-zk-stdlib-ledger9 = { package = "midnight-zk-stdlib", version = "=2.4.0
 ```
 
 The DID runtime pins the signed Rust AST compiler/runtime source to
-`betsudo/compact@05c9ed69b891baa4f15777403c9bdc8bc86c150c`.
+`betsudo/compact@b049407fc6e5b68255bced0ed5624e23f585c504`.
 Its compiler-emitted receipt selects one coordinated Ledger 9.1.0.2 source
-graph: `betsudo/midnight-ledger@f82ac287442fc15c4eb79f02dcb6510373979eab`
+graph: `betsudo/midnight-ledger@f273996eaba509aaf5f6d935f2f9df5c8ec98bf2`
 and `betsudo/midnight-zk@0f9d5c3879f92a8beae8bdb9e7305f39e03a3227`.
 That graph contains `midnight-ledger-v9=1.0.2`, `midnight-storage=3.1.0`,
 `midnight-proofs=0.8.2`, and `midnight-zk-stdlib=2.4.0`. The repository pins
 the compiler-only ZKIR parser to 3.2.1 from
-`betsudo/midnight-zkir@35e386b7b3f3a76117423ca72883c852181104dc`
+`betsudo/midnight-zkir@0196bcd68fce3bfcb69914520b9ddaed051d4757`
 and tests all twelve emitted ZKIR v3 sources. VC and Passport remain on their
 existing Compact/Ledger 8 evidence
 graph; their types never cross the DID runtime boundary.

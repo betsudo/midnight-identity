@@ -11,10 +11,10 @@ import { fileURLToPath } from "node:url";
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const ledgerRevision = "8655615e7c4cbf3a1187b3203bf72e69dc09b8dc";
 const compactRevision = "32e314770da10cc62dab30dcfeb340ec4c6bcb64";
-const didCompactRevision = "05c9ed69b891baa4f15777403c9bdc8bc86c150c";
-const ledger9Revision = "f82ac287442fc15c4eb79f02dcb6510373979eab";
+const didCompactRevision = "b049407fc6e5b68255bced0ed5624e23f585c504";
+const ledger9Revision = "f273996eaba509aaf5f6d935f2f9df5c8ec98bf2";
 const ledger9ZkRevision = "0f9d5c3879f92a8beae8bdb9e7305f39e03a3227";
-const ledger9ZkirRevision = "35e386b7b3f3a76117423ca72883c852181104dc";
+const ledger9ZkirRevision = "0196bcd68fce3bfcb69914520b9ddaed051d4757";
 const proofsRevision = "532629b044a88473a7175f4a96c2511c91156136";
 const ledgerVersions = new Map([
   ["midnight-base-crypto", "1.0.1"],

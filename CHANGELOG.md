@@ -16,8 +16,9 @@ and the project adheres to [SemVer](https://semver.org/).
 
 - **DID runtime advances to the coordinated Ledger 9.1.0.2 Rust AST graph
   (issue #107)** — generated bindings and compatibility evidence now use
-  `betsudo/compact@05c9ed69`, `betsudo/midnight-ledger@f82ac287`, and
-  `betsudo/midnight-zk@0f9d5c38`. The unchanged DID contract source is
+  `betsudo/compact@b049407f`, `betsudo/midnight-ledger@f273996e`,
+  `betsudo/midnight-zk@0f9d5c38`, and
+  `betsudo/midnight-zkir@0196bcd6`. The unchanged DID contract source is
   regenerated with the current AST backend's explicit query-branch lowering;
   the twelve ZKIR v3 artifacts remain byte-for-byte unchanged.
   `midnight-storage=3.1.0` removes `sysinfo`

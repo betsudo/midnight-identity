@@ -33,7 +33,7 @@
       type  = "github";
       owner = "betsudo";
       repo  = "midnight-ledger";
-      rev   = "f82ac287442fc15c4eb79f02dcb6510373979eab";
+      rev   = "f273996eaba509aaf5f6d935f2f9df5c8ec98bf2";
       flake = false;
     };
     compact = {
@@ -59,7 +59,7 @@
       repo  = "compact";
       # Native Rust AST runtime from the signed Ledger 9 compatibility
       # checkpoint. Cargo.toml pins this same revision.
-      rev   = "05c9ed69b891baa4f15777403c9bdc8bc86c150c";
+      rev   = "b049407fc6e5b68255bced0ed5624e23f585c504";
       flake = false;
     };
     compact-did = {
@@ -68,7 +68,7 @@
       repo  = "compact";
       # DID-only Rust AST compiler. Keep the existing `compact` input for
       # VC/Passport generation until those packages publish Ledger 9 artifacts.
-      rev   = "05c9ed69b891baa4f15777403c9bdc8bc86c150c";
+      rev   = "b049407fc6e5b68255bced0ed5624e23f585c504";
     };
   };
 

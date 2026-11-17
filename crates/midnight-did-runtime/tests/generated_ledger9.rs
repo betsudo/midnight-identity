@@ -124,7 +124,7 @@ fn generated_compatibility_receipt_pins_ledger9_and_runtime_abi() {
     assert_eq!(receipt["compiler"]["typescript_runtime"], "0.18.0");
     assert_eq!(
         compatibility["ledger_git_sources"]["midnight-ledger-v9"]["rev"],
-        "f82ac287442fc15c4eb79f02dcb6510373979eab"
+        "f273996eaba509aaf5f6d935f2f9df5c8ec98bf2"
     );
     assert_eq!(
         compatibility["ledger_git_sources"]["midnight-proofs"]["rev"],
@@ -136,7 +136,7 @@ fn generated_compatibility_receipt_pins_ledger9_and_runtime_abi() {
     );
     assert_eq!(
         compatibility["ledger_git_sources"]["midnight-zkir-v3"]["rev"],
-        "35e386b7b3f3a76117423ca72883c852181104dc"
+        "0196bcd68fce3bfcb69914520b9ddaed051d4757"
     );
     assert_eq!(runtime::LEDGER_VERSION, "ledger-9.1.0.2");
     assert_eq!(runtime::RUST_RUNTIME_ABI, 54);

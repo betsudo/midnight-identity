@@ -23,7 +23,7 @@
     "ledger_git_sources": {
       "midnight-base-crypto": {
         "git": "https://github.com/betsudo/midnight-ledger",
-        "rev": "f82ac287442fc15c4eb79f02dcb6510373979eab"
+        "rev": "f273996eaba509aaf5f6d935f2f9df5c8ec98bf2"
       },
       "midnight-circuits": {
         "git": "https://github.com/betsudo/midnight-zk",
@@ -31,7 +31,7 @@
       },
       "midnight-coin-structure": {
         "git": "https://github.com/betsudo/midnight-ledger",
-        "rev": "f82ac287442fc15c4eb79f02dcb6510373979eab"
+        "rev": "f273996eaba509aaf5f6d935f2f9df5c8ec98bf2"
       },
       "midnight-curves": {
         "git": "https://github.com/betsudo/midnight-zk",
@@ -39,19 +39,19 @@
       },
       "midnight-ledger-v9": {
         "git": "https://github.com/betsudo/midnight-ledger",
-        "rev": "f82ac287442fc15c4eb79f02dcb6510373979eab"
+        "rev": "f273996eaba509aaf5f6d935f2f9df5c8ec98bf2"
       },
       "midnight-onchain-runtime": {
         "git": "https://github.com/betsudo/midnight-ledger",
-        "rev": "f82ac287442fc15c4eb79f02dcb6510373979eab"
+        "rev": "f273996eaba509aaf5f6d935f2f9df5c8ec98bf2"
       },
       "midnight-onchain-state": {
         "git": "https://github.com/betsudo/midnight-ledger",
-        "rev": "f82ac287442fc15c4eb79f02dcb6510373979eab"
+        "rev": "f273996eaba509aaf5f6d935f2f9df5c8ec98bf2"
       },
       "midnight-onchain-vm": {
         "git": "https://github.com/betsudo/midnight-ledger",
-        "rev": "f82ac287442fc15c4eb79f02dcb6510373979eab"
+        "rev": "f273996eaba509aaf5f6d935f2f9df5c8ec98bf2"
       },
       "midnight-proofs": {
         "git": "https://github.com/betsudo/midnight-zk",
@@ -59,19 +59,20 @@
       },
       "midnight-serialize": {
         "git": "https://github.com/betsudo/midnight-ledger",
-        "rev": "f82ac287442fc15c4eb79f02dcb6510373979eab"
+        "rev": "f273996eaba509aaf5f6d935f2f9df5c8ec98bf2"
       },
       "midnight-storage": {
         "git": "https://github.com/betsudo/midnight-ledger",
-        "rev": "f82ac287442fc15c4eb79f02dcb6510373979eab"
+        "rev": "f273996eaba509aaf5f6d935f2f9df5c8ec98bf2"
       },
       "midnight-storage-core": {
         "git": "https://github.com/betsudo/midnight-ledger",
-        "rev": "f82ac287442fc15c4eb79f02dcb6510373979eab"
+        "rev": "f273996eaba509aaf5f6d935f2f9df5c8ec98bf2"
       },
       "midnight-transient-crypto": {
         "git": "https://github.com/betsudo/midnight-ledger",
-        "rev": "f82ac287442fc15c4eb79f02dcb6510373979eab"
+        "rev": "f273996eaba509aaf5f6d935f2f9df5c8ec98bf2",
+        "version": "=3.1.0"
       },
       "midnight-zk-stdlib": {
         "git": "https://github.com/betsudo/midnight-zk",
@@ -80,18 +81,18 @@
       "midnight-zkir-v2": {
         "git": "https://github.com/betsudo/midnight-ledger",
         "package": "midnight-zkir",
-        "rev": "f82ac287442fc15c4eb79f02dcb6510373979eab",
+        "rev": "f273996eaba509aaf5f6d935f2f9df5c8ec98bf2",
         "version": "=2.2.0"
       },
       "midnight-zkir-v3": {
         "git": "https://github.com/betsudo/midnight-zkir",
         "package": "midnight-zkir",
-        "rev": "35e386b7b3f3a76117423ca72883c852181104dc",
+        "rev": "0196bcd68fce3bfcb69914520b9ddaed051d4757",
         "version": "=3.2.1"
       },
       "midnight-zswap": {
         "git": "https://github.com/betsudo/midnight-ledger",
-        "rev": "f82ac287442fc15c4eb79f02dcb6510373979eab"
+        "rev": "f273996eaba509aaf5f6d935f2f9df5c8ec98bf2"
       }
     },
     "ledger_version": "ledger-9.1.0.2",
@@ -124,8 +125,8 @@
     "runtime-rs-macros/src/tests/struct_repr.rs": "5a190e1af53f54ddf74943a0e7337c07ac9e4f837e8dc82816f63aa84c634271",
     "runtime-rs-macros/src/tests/witness_bridge.rs": "b428be6cf313dcfeeb4816bc9d90ab474a8b838b877e02d98a9254b650fab2e6",
     "runtime-rs-macros/src/witness_bridge.rs": "02e455920147f552d9dd5c7aae5936d1b281809e2be14ced1b59facbbc4f1e8b",
-    "runtime-rs/Cargo.toml": "dc9563a18edc73871f105680013da7597331705413780c39cd681b20e2c75c81",
-    "runtime-rs/compatibility.json": "3aa54dfc3a9c89485278a71d9c45e096f85e9862d32938b2fd05e0c2a4f0a23c",
+    "runtime-rs/Cargo.toml": "8d9273ba3a809b62f902cd52343fea8609711a3aab97b11c152322f19429679e",
+    "runtime-rs/compatibility.json": "272bcdde6114db9fe62ff3933f31532392d86e9bbc6a8121162aafd9fb9ab875",
     "runtime-rs/src/context.rs": "b08f9d4164f070d657e67f1d183daac606c24513ff4fcdff16ebebe1ede70368",
     "runtime-rs/src/context/cell.rs": "2ef84839492221b9219c6aec08898e6de1390dd87dafa1a828dddbbca159f3ad",
     "runtime-rs/src/context/counter.rs": "125b89ed259fba510f253cd848ee146cacab10f3d5f9c43f85f5898ba78fc3f2",

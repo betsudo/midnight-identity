@@ -12,7 +12,7 @@ two different compiler products and their version banners must not be treated
 as interchangeable.
 
 The exact Rust source used here is signed commit
-`05c9ed69b891baa4f15777403c9bdc8bc86c150c` from
+`b049407fc6e5b68255bced0ed5624e23f585c504` from
 `betsudo/compact`. It identifies Compact 0.31.215, language 0.28.0,
 TypeScript runtime 0.18.0, runtime ABI 54, IR schema 20, Rust 1.99, and
 the Ledger 9.1.0.2 compatibility matrix recorded in
@@ -26,13 +26,13 @@ The migration is DID-only:
   v1.0.0-rc1 contract source;
 - the DID runtime uses `midnight-compact-runtime` 0.2.0 from the exact compiler
   revision and a single coordinated source graph at
-  `betsudo/midnight-ledger@f82ac287442fc15c4eb79f02dcb6510373979eab`
+  `betsudo/midnight-ledger@f273996eaba509aaf5f6d935f2f9df5c8ec98bf2`
   plus `betsudo/midnight-zk@0f9d5c3879f92a8beae8bdb9e7305f39e03a3227`;
 - that graph supplies `midnight-ledger-v9=1.0.2`,
   `midnight-storage=3.1.0`, and `midnight-transient-crypto=3.1.0` without
   mixing registry copies of the same Ledger 9 packages;
 - ZKIR sources are parsed with `midnight-zkir=3.2.1` from
-  `betsudo/midnight-zkir@35e386b7b3f3a76117423ca72883c852181104dc`;
+  `betsudo/midnight-zkir@0196bcd68fce3bfcb69914520b9ddaed051d4757`;
   the Ledger-private ZKIR v2 boundary remains `2.2.0` at the same Ledger
   revision and never crosses the DID crate API;
 - generated code is included at crate root because its references are

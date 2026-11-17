@@ -5,10 +5,10 @@
 
 set -euo pipefail
 
-compact_revision=05c9ed69b891baa4f15777403c9bdc8bc86c150c
-ledger_revision=f82ac287442fc15c4eb79f02dcb6510373979eab
+compact_revision=b049407fc6e5b68255bced0ed5624e23f585c504
+ledger_revision=f273996eaba509aaf5f6d935f2f9df5c8ec98bf2
 zk_revision=0f9d5c3879f92a8beae8bdb9e7305f39e03a3227
-zkir_revision=35e386b7b3f3a76117423ca72883c852181104dc
+zkir_revision=0196bcd68fce3bfcb69914520b9ddaed051d4757
 repository_url=https://github.com/MediaNoxLabs/midnight-identity.git
 revision=
 
