@@ -81,7 +81,7 @@ pub enum BackendError {
         /// Durable node finality evidence.
         receipt: LedgerFinalityReceipt,
         /// Original indexer/provider error.
-        cause: String,
+        source: Box<BackendError>,
     },
     /// Catch-all provider failure.
     Other(String),
@@ -97,9 +97,9 @@ impl fmt::Display for BackendError {
             Self::Unsupported(message) => write!(f, "unsupported live backend operation: {message}"),
             Self::Timeout(message) => write!(f, "backend timeout: {message}"),
             Self::Cancelled(message) => write!(f, "backend operation cancelled: {message}"),
-            Self::Reconciliation { receipt, cause } => write!(
+            Self::Reconciliation { receipt, source } => write!(
                 f,
-                "backend reconciliation failure for transaction {} at block {}: {cause}",
+                "backend reconciliation failure for transaction {} at block {}: {source}",
                 receipt.tx_hash, receipt.block_height
             ),
             Self::Other(message) => write!(f, "backend error: {message}"),
@@ -107,7 +107,14 @@ impl fmt::Display for BackendError {
     }
 }
 
-impl std::error::Error for BackendError {}
+impl std::error::Error for BackendError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            Self::Reconciliation { source, .. } => Some(source.as_ref()),
+            _ => None,
+        }
+    }
+}
 
 impl BackendError {
     /// Return retained finality evidence when submission succeeded but indexer
@@ -244,7 +251,7 @@ impl LiveBackend {
         if let Err(error) = self.providers()?.indexer.reconcile_finality(&receipt).await {
             return Err(BackendError::Reconciliation {
                 receipt,
-                cause: error.to_string(),
+                source: Box::new(error),
             });
         }
         Ok(receipt.into())
@@ -575,6 +582,11 @@ mod tests {
             .clone();
         assert_eq!(retained, receipt("call"));
         assert!(error.to_string().contains("indexer unavailable"));
+        assert!(matches!(
+            &error,
+            BackendError::Reconciliation { source, .. }
+                if matches!(source.as_ref(), BackendError::Network(message) if message == "indexer unavailable")
+        ));
 
         indexer.clear_error();
         runtime().block_on(backend.reconcile_finality(&retained)).unwrap();

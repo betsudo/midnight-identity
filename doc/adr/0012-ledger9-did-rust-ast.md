@@ -38,8 +38,10 @@ The migration is DID-only:
 - `LiveBackend` accepts provider ports that must execute generated code and
   construct a real positive-fee Ledger 9 transaction. A `DidContractCall`
   envelope is never itself a production transaction;
-- VC and Passport retain their existing compiler/runtime evidence. No VC code,
-  contract, or artifact is regenerated in this change.
+- VC and Passport retain their existing compiler/runtime evidence. Their
+  contracts, package pins, and behavior are unchanged; the two committed VC
+  Rust bindings receive only the import-order normalization produced by the
+  pinned Rust 1.99 formatter so the existing drift gate remains reproducible.
 
 The official Ledger 9 package may retain older proof/transient packages as
 private compatibility implementation details. They are permitted only inside
@@ -72,27 +74,29 @@ runtime itself does not yet qualify for `aarch64-apple-ios-sim`: released
 backend imports macOS-only libc symbols when built for iOS. This is an upstream
 dependency-cone blocker, not a generated DID contract failure.
 
-Signed Betsudo commit `cea4ab424083850c14bfcb37ac5d09fd601f7614`, proposed
-in `betsudo/midnight-ledger#40` against the qualified
-`integration/ledger9/ledger-9.1.0.1` line, removes the unused dependency from
-`midnight-storage-core` and gates the storage crate's copy behind
-`stress-test`. With the complete storage boundary locally pinned to that one
-revision, the DID runtime compiles for both `aarch64-apple-ios-sim` and
-`aarch64-linux-android` using Rust 1.99. A workspace `[patch.crates-io]` is not
-inherited by downstream Git consumers, however, so this repository must not
-claim or commit that local-only workaround. Adopt a corrected published storage
-release, or a coordinated single-source Ledger graph, before restoring the
-mobile claim.
+The storage correction was merged as Betsudo commit
+`5df208e7cc6d20e7aba312bdf346892e606d3907` by
+`betsudo/midnight-ledger#40` on the qualified Ledger 9.1.0.1 integration line.
+It removes the unused dependency from `midnight-storage-core` and gates the
+storage crate's copy behind `stress-test`. The same correction is being
+forward-ported to the Ledger 9.1.0.2 integration line by
+`betsudo/midnight-ledger#42`. With the complete storage boundary locally pinned
+to one corrected revision, the DID runtime compiles for both
+`aarch64-apple-ios-sim` and `aarch64-linux-android` using Rust 1.99. A workspace
+`[patch.crates-io]` is not inherited by downstream Git consumers, however, so
+this repository must not claim or commit that local-only workaround. Adopt a
+corrected published storage release, or a coordinated single-source Ledger
+graph, before restoring the mobile claim.
 
 The 2026-11-16 local arm64 receipt passed exact DID regeneration, workspace
 formatting, lint with warnings denied, all repository tests (678 first-party
 and 10 feature-complete VC-family tests), the 87% coverage gate at 91.26%, the
 WASM-clean package check, and `nix flake check --no-build`. The VC regeneration
-comparison remains unchanged semantically but is not byte-stable under Rust
-1.99: stable rustfmt moves `std::marker::PhantomData` below the generated glob
-import because the repository's nightly-only import grouping options are
-ignored. This DID migration deliberately does not accept that unrelated VC
-generated-source churn.
+comparison remains semantically unchanged. Stable Rust 1.99 moves
+`std::marker::PhantomData` below the generated glob import because the
+repository's nightly-only import grouping options are ignored; the committed
+bindings now include that two-line formatting normalization so local and hosted
+drift checks agree.
 
 Native Linux and a fresh proof-backed, positive-fee standalone transaction are
 still required release qualifications. Of the twelve exported stateful
