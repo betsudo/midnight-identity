@@ -16,7 +16,7 @@ shared owner is active.
 Run the read-only preflight:
 
 ```bash
-scripts/midnight-localnet.sh attach
+scripts/midnight-localnet.sh discover
 ```
 
 It verifies:
@@ -26,7 +26,8 @@ It verifies:
   height;
 - proof-server release `9.0.2`.
 
-On success it prints the canonical client configuration:
+`discover` and `attach` are aliases. On success they print the canonical client
+configuration:
 
 | Service | Endpoint |
 | --- | --- |
@@ -37,6 +38,9 @@ On success it prints the canonical client configuration:
 
 Attach failure is diagnostic only: it does not authorize another session to
 start, stop, reset, or replace the shared stack. Coordinate with its owner.
+Even the owner-only `up` command performs this discovery first and exits
+without invoking Compose when the compatible shared stack is already running.
+It refuses to start over incompatible services occupying the shared endpoints.
 
 ## Operate as the designated owner
 

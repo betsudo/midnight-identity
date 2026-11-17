@@ -9,7 +9,7 @@ credentials="$repo_root/infra/.midnight-indexer.env"
 project=midnight-network
 
 usage() {
-  printf 'usage: %s {attach|config|up|status|down}\n' "${0##*/}" >&2
+  printf 'usage: %s {attach|discover|config|up|status|down}\n' "${0##*/}" >&2
   exit 2
 }
 
@@ -29,7 +29,7 @@ require_owner() {
 
 action=${1:-attach}
 case "$action" in
-  attach)
+  attach|discover)
     exec "$repo_root/scripts/midnight-attach.sh"
     ;;
   config)
@@ -38,6 +38,19 @@ case "$action" in
     ;;
   up)
     require_owner
+    if "$repo_root/scripts/midnight-attach.sh"; then
+      printf 'compatible midnight-network stack already running; Compose was not invoked\n' >&2
+      exit 0
+    fi
+    for url in \
+      http://127.0.0.1:9944 \
+      http://127.0.0.1:8088/api/v4/graphql \
+      http://127.0.0.1:6300/version; do
+      if curl --noproxy '*' --silent --show-error --max-time 1 "$url" >/dev/null 2>&1; then
+        printf 'an incompatible or not-ready Midnight service already occupies the shared endpoints; refusing Compose up\n' >&2
+        exit 1
+      fi
+    done
     require_credentials
     exec docker compose -p "$project" -f "$compose_file" up -d
     ;;

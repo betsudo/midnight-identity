@@ -69,11 +69,15 @@ fn ledger9_standalone_protocol_probe() {
 
     let health = rpc(&node, "system_health", serde_json::json!([]));
     assert_eq!(health["isSyncing"], false, "node is syncing: {health}");
-    let ledger_version = rpc(&node, "midnight_ledgerVersion", serde_json::json!([]));
+    let node_version = rpc(&node, "system_version", serde_json::json!([]));
     assert!(
-        ledger_version.to_string().contains('9'),
-        "expected Ledger 9, got {ledger_version}"
+        node_version
+            .as_str()
+            .is_some_and(|version| { version == "2.1.101" || version.starts_with("2.1.101-") }),
+        "unexpected Ledger 9 node release: {node_version}"
     );
+    let ledger_api = rpc(&node, "midnight_ledgerVersion", serde_json::json!([]));
+    assert_eq!(ledger_api, "1.0.1", "unexpected Ledger 9 RPC API release");
 
     let indexer_url = format!("{}/api/v4/graphql", indexer.trim_end_matches('/'));
     let schema_body = serde_json::json!({"query":"{ __schema { queryType { fields { name } } } }"}).to_string();
