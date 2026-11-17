@@ -73,8 +73,16 @@ pub enum BackendError {
     Timeout(String),
     /// The operation was cancelled.
     Cancelled(String),
-    /// Finality could not be reconciled with indexer state.
-    Reconciliation(String),
+    /// A transaction finalized, but the indexer did not reconcile it yet.
+    ///
+    /// The durable receipt is retained so callers can retry reconciliation
+    /// after restart without resubmitting the transaction.
+    Reconciliation {
+        /// Durable node finality evidence.
+        receipt: LedgerFinalityReceipt,
+        /// Original indexer/provider error.
+        cause: String,
+    },
     /// Catch-all provider failure.
     Other(String),
 }
@@ -89,13 +97,28 @@ impl fmt::Display for BackendError {
             Self::Unsupported(message) => write!(f, "unsupported live backend operation: {message}"),
             Self::Timeout(message) => write!(f, "backend timeout: {message}"),
             Self::Cancelled(message) => write!(f, "backend operation cancelled: {message}"),
-            Self::Reconciliation(message) => write!(f, "backend reconciliation failure: {message}"),
+            Self::Reconciliation { receipt, cause } => write!(
+                f,
+                "backend reconciliation failure for transaction {} at block {}: {cause}",
+                receipt.tx_hash, receipt.block_height
+            ),
             Self::Other(message) => write!(f, "backend error: {message}"),
         }
     }
 }
 
 impl std::error::Error for BackendError {}
+
+impl BackendError {
+    /// Return retained finality evidence when submission succeeded but indexer
+    /// reconciliation did not.
+    pub fn finality_receipt(&self) -> Option<&LedgerFinalityReceipt> {
+        match self {
+            Self::Reconciliation { receipt, .. } => Some(receipt),
+            _ => None,
+        }
+    }
+}
 
 /// I/O seam shared by mutable SDK calls and read-only resolution.
 #[async_trait]
@@ -209,13 +232,22 @@ impl LiveBackend {
     pub async fn submit_deployment(&self, request: DidDeploymentRequest) -> Result<FinalizedTxData, BackendError> {
         let providers = self.providers()?;
         let receipt = providers.executor.deploy(request).await?;
-        providers.indexer.reconcile_finality(&receipt).await?;
-        Ok(receipt.into())
+        self.reconcile_receipt(receipt).await
     }
 
     /// Reconcile a previously finalized receipt without resubmission.
     pub async fn reconcile_finality(&self, receipt: &LedgerFinalityReceipt) -> Result<(), BackendError> {
         self.providers()?.indexer.reconcile_finality(receipt).await
+    }
+
+    async fn reconcile_receipt(&self, receipt: LedgerFinalityReceipt) -> Result<FinalizedTxData, BackendError> {
+        if let Err(error) = self.providers()?.indexer.reconcile_finality(&receipt).await {
+            return Err(BackendError::Reconciliation {
+                receipt,
+                cause: error.to_string(),
+            });
+        }
+        Ok(receipt.into())
     }
 }
 
@@ -225,8 +257,7 @@ impl Backend for LiveBackend {
         let providers = self.providers()?;
         let call = DidContractCall::decode(&tx.bytes)?;
         let receipt = providers.executor.execute(call).await?;
-        providers.indexer.reconcile_finality(&receipt).await?;
-        Ok(receipt.into())
+        self.reconcile_receipt(receipt).await
     }
 
     async fn read_state(&self) -> Result<ChargedState<DefaultDB>, BackendError> {
@@ -401,6 +432,75 @@ impl Backend for ResolverBackend {
 mod tests {
     use super::*;
 
+    #[derive(Default)]
+    struct FakeExecutor {
+        calls: Mutex<Vec<DidContractCall>>,
+        deployments: Mutex<Vec<DidDeploymentRequest>>,
+    }
+
+    #[async_trait]
+    impl Ledger9DidProvider for FakeExecutor {
+        async fn deploy(&self, request: DidDeploymentRequest) -> Result<LedgerFinalityReceipt, BackendError> {
+            self.deployments.lock().unwrap().push(request);
+            Ok(receipt("deploy"))
+        }
+
+        async fn execute(&self, call: DidContractCall) -> Result<LedgerFinalityReceipt, BackendError> {
+            self.calls.lock().unwrap().push(call);
+            Ok(receipt("call"))
+        }
+    }
+
+    #[derive(Default)]
+    struct FakeIndexer {
+        reconciliation_error: Mutex<Option<BackendError>>,
+        reconciled: Mutex<Vec<LedgerFinalityReceipt>>,
+    }
+
+    impl FakeIndexer {
+        fn failing(error: BackendError) -> Self {
+            Self {
+                reconciliation_error: Mutex::new(Some(error)),
+                reconciled: Mutex::new(Vec::new()),
+            }
+        }
+
+        fn clear_error(&self) {
+            *self.reconciliation_error.lock().unwrap() = None;
+        }
+    }
+
+    #[async_trait]
+    impl LedgerIndexerProvider for FakeIndexer {
+        async fn read_state_bytes(&self) -> Result<Vec<u8>, BackendError> {
+            Err(BackendError::Unsupported("fake indexer has no serialized state".into()))
+        }
+
+        async fn read_state(&self) -> Result<ChargedState<DefaultDB>, BackendError> {
+            Ok(empty_charged_state())
+        }
+
+        async fn read_snapshot(&self) -> Result<DidLedgerSnapshot, BackendError> {
+            Ok(DidLedgerSnapshot::default())
+        }
+
+        async fn reconcile_finality(&self, receipt: &LedgerFinalityReceipt) -> Result<(), BackendError> {
+            self.reconciled.lock().unwrap().push(receipt.clone());
+            match self.reconciliation_error.lock().unwrap().clone() {
+                Some(error) => Err(error),
+                None => Ok(()),
+            }
+        }
+    }
+
+    fn receipt(kind: &str) -> LedgerFinalityReceipt {
+        LedgerFinalityReceipt {
+            tx_hash: format!("{kind}-hash"),
+            block_height: 42,
+            finality_token: Some(format!("{kind}-cursor")),
+        }
+    }
+
     fn runtime() -> tokio::runtime::Runtime {
         tokio::runtime::Builder::new_current_thread()
             .enable_all()
@@ -434,5 +534,55 @@ mod tests {
     fn unconfigured_live_backend_returns_typed_error() {
         let error = runtime().block_on(LiveBackend::new().read_state()).unwrap_err();
         assert_eq!(error, BackendError::Unconfigured("LiveProviders"));
+    }
+
+    #[test]
+    fn live_backend_executes_and_reconciles_once() {
+        let executor = Arc::new(FakeExecutor::default());
+        let indexer = Arc::new(FakeIndexer::default());
+        let backend = LiveBackend::with_providers(LiveProviders::new(executor.clone(), indexer.clone()));
+
+        let finalized = runtime()
+            .block_on(backend.submit_tx(BuiltTx {
+                bytes: DidContractCall::Deactivate.encode(),
+            }))
+            .unwrap();
+
+        assert_eq!(finalized.tx_hash, "call-hash");
+        assert_eq!(
+            executor.calls.lock().unwrap().as_slice(),
+            &[DidContractCall::Deactivate]
+        );
+        assert_eq!(indexer.reconciled.lock().unwrap().as_slice(), &[receipt("call")]);
+    }
+
+    #[test]
+    fn reconciliation_failure_retains_receipt_for_restart_without_resubmission() {
+        let executor = Arc::new(FakeExecutor::default());
+        let indexer = Arc::new(FakeIndexer::failing(BackendError::Network(
+            "indexer unavailable".into(),
+        )));
+        let backend = LiveBackend::with_providers(LiveProviders::new(executor.clone(), indexer.clone()));
+
+        let error = runtime()
+            .block_on(backend.submit_tx(BuiltTx {
+                bytes: DidContractCall::Deactivate.encode(),
+            }))
+            .unwrap_err();
+        let retained = error
+            .finality_receipt()
+            .expect("finalized receipt must survive")
+            .clone();
+        assert_eq!(retained, receipt("call"));
+        assert!(error.to_string().contains("indexer unavailable"));
+
+        indexer.clear_error();
+        runtime().block_on(backend.reconcile_finality(&retained)).unwrap();
+
+        assert_eq!(executor.calls.lock().unwrap().len(), 1, "retry must not resubmit");
+        assert_eq!(
+            indexer.reconciled.lock().unwrap().as_slice(),
+            &[receipt("call"), receipt("call")]
+        );
     }
 }
