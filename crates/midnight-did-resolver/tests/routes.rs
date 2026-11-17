@@ -45,14 +45,14 @@ async fn spawn_mock_indexer() -> String {
         }
     }
     let router = Router::new()
-        .route("/api/v3/graphql", post(graphql))
+        .route("/api/v4/graphql", post(graphql))
         .with_state(fixture_addr());
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
     let port = listener.local_addr().unwrap().port();
     tokio::spawn(async move {
         axum::serve(listener, router).await.unwrap();
     });
-    format!("http://127.0.0.1:{port}/api/v3/graphql")
+    format!("http://127.0.0.1:{port}/api/v4/graphql")
 }
 
 async fn spawn_resolver(indexer_url: String) -> String {
@@ -165,7 +165,7 @@ async fn network_mismatch_is_400() {
 #[tokio::test]
 async fn indexer_down_is_internal_error_500() {
     // Point at a port with nothing listening.
-    let base = spawn_resolver("http://127.0.0.1:1/api/v3/graphql".into()).await;
+    let base = spawn_resolver("http://127.0.0.1:1/api/v4/graphql".into()).await;
     let did = format!("did:midnight:undeployed:{}", fixture_addr());
     let resp = reqwest::get(format!("{base}/resolve/{did}")).await.unwrap();
     assert_eq!(resp.status(), 500);

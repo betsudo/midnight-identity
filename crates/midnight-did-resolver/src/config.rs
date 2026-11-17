@@ -26,7 +26,7 @@ pub struct ResolverConfig {
     /// Bind port (`RESOLVER_PORT`, default `3001`).
     pub port: u16,
     /// Default indexer GraphQL URL (`MIDNIGHT_INDEXER_HTTP_URL`,
-    /// default `http://127.0.0.1:8088/api/v3/graphql`).
+    /// default `http://127.0.0.1:8088/api/v4/graphql`).
     pub indexer_url: String,
     /// Optional expected network (`MIDNIGHT_NETWORK`); when set, DIDs
     /// for any other network resolve to `networkMismatch`.
@@ -46,7 +46,7 @@ impl Default for ResolverConfig {
         Self {
             host: "127.0.0.1".into(),
             port: 3001,
-            indexer_url: "http://127.0.0.1:8088/api/v3/graphql".into(),
+            indexer_url: "http://127.0.0.1:8088/api/v4/graphql".into(),
             expected_network: None,
             timeout_ms: 15_000,
             allow_private_indexer_overrides: true,

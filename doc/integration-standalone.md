@@ -4,58 +4,91 @@ Copyright (C) 2026 Midnight Foundation
 SPDX-License-Identifier: Apache-2.0
 -->
 
-# Live integration: resolving a real DID through IndexerBackend
+# Ledger 9 local integration
 
-The issue-#4 acceptance procedure — proven end-to-end on 2026-08-07:
-deploy a `did:midnight` with the TS reference stack, then resolve it
-from pure Rust via `midnight-did-indexer` and diff against the TS
-reference resolver.
+The repository can attach to the designated shared `midnight-network` stack
+or, when this checkout is the designated owner, operate the same stack through
+its repo-owned Compose file. Do not start a second fixed-port project while a
+shared owner is active.
 
-## 1. Start the standalone stack (fixed ports)
+## Attach to the shared stack
 
-```bash
-docker compose -p did-int -f infra/standalone.yml up -d --wait
-```
-
-Node `:9944`, indexer `:8088` (GraphQL at `/api/v3/graphql`),
-proof-server `:6300` — exactly the TS `StandaloneConfig` endpoints.
-
-## 2. Deploy a DID (TS reference tooling)
-
-Clone `midnightntwrk/midnight-did` at the pinned contract commit
-(42a8e4a / 0.5.0), `pnpm install --frozen-lockfile`, build
-`...-contract...` and `...-api...` (needs the `compact` CLI + node 24),
-then run a deploy script against `StandaloneConfig` with the genesis
-seed `0x…01`: `buildWalletAndWaitForFunds` →
-`registerForDustGeneration` → `configureProviders` → `initPrivateState`
-→ `createDID` (+ optional `addVerificationMethod` /
-`addVerificationMethodRelation` for a richer document). ~1 min
-including proving.
-
-⚠️ The contract version matters: a pre-0.5.0 workspace deploys an
-18-field ledger (`controllerPublicKey: Bytes<32>`, no recovery
-authority) whose chunk-0 layout the 0.5.0 decoder rejects — by design
-(`missing ledger slot` errors instead of mis-decoding).
-
-## 3. Resolve from Rust
+Run the read-only preflight:
 
 ```bash
-cargo run -p midnight-did-indexer --example live_resolve -- <contract-address-hex>
+scripts/midnight-localnet.sh attach
 ```
 
-(Optional args: indexer GraphQL URL, network.) Prints
-`{didDocument, didDocumentMetadata}` JSON via the full read path:
-indexer GraphQL → `ContractState` deserialize →
-`state_decode::decode_ledger_snapshot` → `midnight-did-api::resolve`.
+It verifies:
 
-## 4. Parity result (2026-08-07)
+- node release `2.1.101`, genesis availability, and block lookup;
+- Indexer v4 Ledger 9 protocol state and agreement with the node at the same
+  height;
+- proof-server release `9.0.2`.
 
-Against the upstream `MidnightDIDResolver` (same ledgerReader the
-resolver service uses) on the same DID:
+On success it prints the canonical client configuration:
 
-- `didDocumentMetadata`: **byte-identical** (`created`, `updated`,
-  `versionId`).
-- `didDocument`: identical except one known cosmetic deviation — the
-  TS document type serializes **empty** `alsoKnownAs`/`service` as
-  explicit `null`, we omit the fields (semantically equivalent;
-  tracked as a parity-polish issue).
+| Service | Endpoint |
+| --- | --- |
+| Node RPC | `http://127.0.0.1:9944` |
+| Indexer HTTP | `http://127.0.0.1:8088/api/v4/graphql` |
+| Indexer WebSocket | `ws://127.0.0.1:8088/api/v4/graphql/ws` |
+| Proof server | `http://127.0.0.1:6300` |
+
+Attach failure is diagnostic only: it does not authorize another session to
+start, stop, reset, or replace the shared stack. Coordinate with its owner.
+
+## Operate as the designated owner
+
+Create private indexer credentials once:
+
+```bash
+cp infra/standalone.env.example infra/.midnight-indexer.env
+# Replace every value. Generate APP__INFRA__SECRET with: openssl rand -hex 32
+```
+
+Keep the same credentials when reusing the Compose-managed indexer volume.
+The private file is ignored by Git.
+
+Validate and start the pinned Apple Silicon Ledger 9 cohort:
+
+```bash
+scripts/midnight-localnet.sh config
+MIDNIGHT_LOCALNET_OWNER=1 scripts/midnight-localnet.sh up
+scripts/midnight-localnet.sh status
+scripts/midnight-localnet.sh attach
+```
+
+Only the designated owner shuts it down. `down` preserves the named volumes:
+
+```bash
+MIDNIGHT_LOCALNET_OWNER=1 scripts/midnight-localnet.sh down
+```
+
+## Run the Rust service probe
+
+After a successful attach, the environment-gated runtime probe checks the
+same node, Indexer v4, and proof-server surfaces:
+
+```bash
+MIDNIGHT_DID_LEDGER9_STANDALONE=1 \
+MIDNIGHT_DID_LEDGER9_NODE_URL=http://127.0.0.1:9944 \
+MIDNIGHT_DID_LEDGER9_INDEXER_URL=http://127.0.0.1:8088 \
+MIDNIGHT_DID_LEDGER9_PROOF_URL=http://127.0.0.1:6300 \
+cargo test -p midnight-did-runtime --test ledger9_standalone -- --nocapture
+```
+
+This is a compatibility probe, not a funded DID lifecycle receipt. A lifecycle
+claim additionally requires a fresh deployment, proof, transaction submission,
+finality, and independent indexed resolution. When reusing a deployment record
+after restart, verify its recorded block hash at that height; genesis alone does
+not distinguish independent dev chains.
+
+## Isolated runs
+
+Tests that require a fresh chain, reset, incompatible versions, or a different
+topology must use a separate Compose project named
+`midnight-midnight-identity-ledger9-<run-id>`, Compose-managed volumes, and
+Docker-assigned loopback ports. Discover every mapped endpoint with
+`docker compose ... port`; do not point the shared client configuration at an
+isolated run. Remove only resources owned by that run.

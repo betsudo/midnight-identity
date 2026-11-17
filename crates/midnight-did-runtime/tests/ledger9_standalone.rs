@@ -75,7 +75,7 @@ fn ledger9_standalone_protocol_probe() {
         "expected Ledger 9, got {ledger_version}"
     );
 
-    let indexer_url = format!("{}/api/v3/graphql", indexer.trim_end_matches('/'));
+    let indexer_url = format!("{}/api/v4/graphql", indexer.trim_end_matches('/'));
     let schema_body = serde_json::json!({"query":"{ __schema { queryType { fields { name } } } }"}).to_string();
     let (indexer_status, indexer_response) = http_request("POST", &indexer_url, Some(&schema_body), "application/json");
     assert_eq!(indexer_status, 200, "indexer HTTP {indexer_status}: {indexer_response}");

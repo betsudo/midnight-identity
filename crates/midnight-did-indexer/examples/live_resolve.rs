@@ -25,7 +25,7 @@
 //!     <contract-address-hex> [indexer-graphql-url] [network]
 //! ```
 //!
-//! Defaults: `http://127.0.0.1:8088/api/v3/graphql`, network `undeployed`.
+//! Defaults: `http://127.0.0.1:8088/api/v4/graphql`, network `undeployed`.
 
 use midnight_did_api::resolution::resolve;
 use midnight_did_indexer::{IndexerBackend, IndexerClient};
@@ -39,7 +39,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .ok_or("usage: live_resolve <contract-address-hex> [url] [network]")?;
     let url = args
         .next()
-        .unwrap_or_else(|| "http://127.0.0.1:8088/api/v3/graphql".to_string());
+        .unwrap_or_else(|| "http://127.0.0.1:8088/api/v4/graphql".to_string());
     let network = match args.next().as_deref() {
         None | Some("undeployed") => MidnightNetwork::Undeployed,
         Some("testnet") => MidnightNetwork::Testnet,

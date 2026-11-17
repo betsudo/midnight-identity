@@ -80,7 +80,7 @@ impl MockReply {
 /// Spawn a one-route GraphQL mock and return its endpoint URL.
 async fn spawn_mock(reply: MockReply) -> String {
     let router = Router::new().route(
-        "/api/v3/graphql",
+        "/api/v4/graphql",
         post(move |Json(body): Json<Value>| async move { reply.respond(&body) }),
     );
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
@@ -88,7 +88,7 @@ async fn spawn_mock(reply: MockReply) -> String {
     tokio::spawn(async move {
         axum::serve(listener, router).await.unwrap();
     });
-    format!("http://127.0.0.1:{port}/api/v3/graphql")
+    format!("http://127.0.0.1:{port}/api/v4/graphql")
 }
 
 async fn backend_for(reply: MockReply, address: &str) -> IndexerBackend {
@@ -176,7 +176,7 @@ async fn garbage_state_bytes_are_a_decode_error() {
 #[tokio::test]
 async fn connection_refused_is_a_transport_error() {
     // Nothing listens on port 1.
-    let client = IndexerClient::new("http://127.0.0.1:1/api/v3/graphql").unwrap();
+    let client = IndexerClient::new("http://127.0.0.1:1/api/v4/graphql").unwrap();
     let backend = IndexerBackend::new(client, fixture_addr());
     let err = backend.read_snapshot().await.unwrap_err();
     assert_network_err(&err, "indexer transport");
@@ -191,8 +191,8 @@ async fn submit_tx_stays_read_only_even_with_live_mock() {
 
 #[test]
 fn accessors_expose_construction_inputs() {
-    let client = IndexerClient::new("http://example.invalid/api/v3/graphql").unwrap();
-    assert_eq!(client.graphql_url(), "http://example.invalid/api/v3/graphql");
+    let client = IndexerClient::new("http://example.invalid/api/v4/graphql").unwrap();
+    assert_eq!(client.graphql_url(), "http://example.invalid/api/v4/graphql");
     let backend = IndexerBackend::new(client, "00aabb");
     assert_eq!(backend.address_hex(), "00aabb");
 }

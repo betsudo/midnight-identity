@@ -49,14 +49,14 @@ async fn spawn_mock_indexer() -> String {
         }
     }
     let router = Router::new()
-        .route("/api/v3/graphql", post(graphql))
+        .route("/api/v4/graphql", post(graphql))
         .with_state(fixture_addr());
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
     let port = listener.local_addr().unwrap().port();
     tokio::spawn(async move {
         axum::serve(listener, router).await.unwrap();
     });
-    format!("http://127.0.0.1:{port}/api/v3/graphql")
+    format!("http://127.0.0.1:{port}/api/v4/graphql")
 }
 
 fn service_with(config: ResolverConfig) -> ResolverService {
@@ -67,7 +67,7 @@ fn service_with(config: ResolverConfig) -> ResolverService {
 async fn offchain_did_is_network_mismatch() {
     // Offchain DIDs never reach the indexer, so a dead default URL is fine.
     let service = service_with(ResolverConfig {
-        indexer_url: "http://127.0.0.1:1/api/v3/graphql".into(),
+        indexer_url: "http://127.0.0.1:1/api/v4/graphql".into(),
         ..ResolverConfig::default()
     });
     let did = format!("did:midnight:offchain:{}", "ab".repeat(32));
@@ -111,7 +111,7 @@ async fn accepted_override_wins_over_default_endpoint() {
     // Default endpoint is dead; only the override can serve the state.
     let mock = spawn_mock_indexer().await;
     let service = service_with(ResolverConfig {
-        indexer_url: "http://127.0.0.1:1/api/v3/graphql".into(),
+        indexer_url: "http://127.0.0.1:1/api/v4/graphql".into(),
         allow_private_indexer_overrides: true,
         ..ResolverConfig::default()
     });

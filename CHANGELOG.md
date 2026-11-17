@@ -14,6 +14,14 @@ and the project adheres to [SemVer](https://semver.org/).
 
 ### Changed
 
+- **Ledger 9 localnet ownership and attachment (issue #107)** — the repo-owned
+  standalone Compose profile now pins the Ledger 9 node, Indexer v4, and proof
+  server by image digest, binds fixed ports to loopback, keeps credentials in
+  an ignored private env file, and persists node/indexer state in named
+  volumes. A guarded owner launcher and read-only attach preflight prevent
+  concurrent sessions from silently replacing the shared stack; DID indexer
+  clients now use the v4 GraphQL endpoint.
+
 - **Native DID runtime Git consumption (issue #103)** —
   `midnight-did-runtime` now resolves its complete Ledger 8 and Compact runtime
   cone from immutable Git revisions, while keeping Nix-materialised path
