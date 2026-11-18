@@ -22,6 +22,7 @@ pub mod contract_call;
 pub mod contract_wrapper;
 pub mod identifier_bridge;
 pub mod ledger9_signing;
+pub mod operation_journal;
 pub mod state_decode;
 
 pub use backend::{
