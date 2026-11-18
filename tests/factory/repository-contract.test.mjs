@@ -22,7 +22,15 @@ test("Pi settings and delivery profiles enforce bounded exact-pinned operation",
   assert.equal(settings.defaultModel, "gpt-6.1-sol");
   assert.equal(settings.defaultThinkingLevel, "medium");
   assert.deepEqual(settings.packages, [
-    { source: "npm:dev-loops@1.0.2", extensions: [] }, "npm:pi-subagents@0.35.0", "npm:typebox@1.3.9",
+    { source: "npm:dev-loops@1.0.2", extensions: [] },
+    {
+      source: "npm:pi-taskflow@0.2.10",
+      autoload: false,
+      extensions: ["-dist/index.js"],
+      skills: ["!skills/**"],
+    },
+    "npm:pi-subagents@0.35.0",
+    "npm:typebox@1.3.9",
   ]);
   assert.equal(settings.subagents.defaultModel, "openai-codex/gpt-6.1-sol");
   assert.equal(settings.subagents.defaultThinking, "medium");
@@ -103,11 +111,17 @@ test("supervisor owns delegation and the worker cannot create nested agents", as
   ]);
   assert.match(supervisor, /tools: .*subagent/u);
   assert.match(supervisor, /exactly one `factory-worker`/u);
+  assert.match(supervisor, /`subagent` tool with `agent: "factory-worker"`/u);
+  assert.match(supervisor, /stop instead of substituting/u);
   assert.match(supervisor, /filter status,\s+summary, duplicate, and stale automated noise/u);
   assert.match(supervisor, /Acceptance, correctness,\s+security, provenance, required-test, and CI findings are same-PR fixes/u);
   assert.match(supervisor, /Never\s+claim readiness while any review thread remains unresolved/u);
   assert.doesNotMatch(worker.split("---", 3)[1], /\bsubagent\b/u);
   assert.match(worker, /maxSubagentDepth: 0/u);
+  assert.match(worker, /model: "openai-codex\/gpt-6\.1-sol"/u);
+  assert.match(worker, /thinking: medium/u);
+  assert.match(worker, /acceptanceRole: writer/u);
+  assert.match(worker, /tools: .*edit, write/u);
 });
 
 test("the constitution stays concise and protects repository boundaries", async () => {

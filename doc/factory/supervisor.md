@@ -25,7 +25,9 @@ commands remain authoritative outside Pi.
    read-only; `betsudo/midnight-identity` is the only mutation target.
 4. Admit exactly one `factory-worker` for the issue. Pass the issue, worktree,
    branch, base, profile, acceptance criteria, selected target plan, and any
-   recorded reference-repository observations.
+   recorded reference-repository observations. Dispatch it directly with the
+   `subagent` tool and the exact repository agent name. If `factory-worker` is
+   unavailable, stop; never substitute taskflow or a built-in analysis role.
 5. The worker edits and validates only in that worktree. It may not spawn a
    child, enter taskflow, detach a retry loop, merge, or change repository
    settings. It returns a draft candidate to the supervisor.

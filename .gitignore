@@ -34,6 +34,7 @@ docs/superpowers/
 .pi/nix-global/
 .pi/agent/
 .pi/sessions/
+.pi/taskflows/runs/
 .pi/**/*.jsonl
 
 # Local credentials and environment overrides (examples remain tracked).

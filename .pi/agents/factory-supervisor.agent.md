@@ -37,8 +37,10 @@ Admit exactly one `factory-worker` for the issue. Pass an explicit issue,
 absolute worktree, branch, base, profile, acceptance criteria, non-goals,
 changed-path expectation, selected targets, recorded reference observations,
 source-path/provenance requirements, and stop conditions. Never wrap
-the worker in taskflow or create a detached/nested retry loop. The worker may
-not delegate.
+the worker in taskflow or create a detached/nested retry loop. Use the
+`subagent` tool with `agent: "factory-worker"`; if that exact agent is not
+discoverable, stop instead of substituting a built-in analyst, developer, or
+taskflow role. The worker may not delegate.
 
 After worker handoff, inspect the candidate exact head and verify returned
 source repository/SHA/path/license provenance against the recorded reference

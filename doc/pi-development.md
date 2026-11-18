@@ -40,6 +40,15 @@ The layering direction is: **nix provides pi, pi reads the repo policy.**
    `factory-worker` roles implement the bounded supervisor/sole-writer split;
    delivery and worker limits are machine-readable in `.pi/`.
 
+The project also applies an `autoload: false` unload delta to any globally
+installed `pi-taskflow@0.2.10` extension and skill, and `bootstrap.sh --pi`
+denies the `taskflow` tool as defense in depth. This matters because taskflow's
+generic delegation prompt otherwise replaces the repository's exact
+`factory-worker` with a built-in role. The supported smoke is a synchronous
+`subagent` dispatch of `factory-worker`; it must report
+`openai-codex/gpt-6.1-sol`, expose writer tools, and leave taskflow unavailable.
+The unload delta changes no user-global Pi settings.
+
 The `pi-subagents@0.35.0` pin is selected from package-source and startup
 evidence, not from peer metadata or `./bootstrap.sh --pi --version` alone.
 Unlike `pi-subagents@0.34.0`, which installs private `typebox` and
@@ -52,9 +61,9 @@ still owns the real tracked-extension startup smoke before final approval; do
 not treat the version command alone as runtime-extension compatibility evidence.
 
 Everything pi writes locally (`.pi/git/`, `.pi/npm/`, `.pi/harness/`,
-`.pi/agent/`, and `.pi/sessions/`) is git-ignored. Settings, delivery profiles,
-subagent policy, and repository agents are tracked and CODEOWNERS-gated — review
-changes to them like executable tooling.
+`.pi/agent/`, `.pi/sessions/`, and `.pi/taskflows/runs/`) is git-ignored.
+Settings, delivery profiles, subagent policy, and repository agents are tracked
+and CODEOWNERS-gated — review changes to them like executable tooling.
 
 ## Commands
 
