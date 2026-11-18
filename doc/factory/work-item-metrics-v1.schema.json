@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/MediaNoxLabs/midnight-identity/blob/develop/doc/factory/work-item-metrics-v1.schema.json",
+  "$id": "https://github.com/betsudo/midnight-identity/blob/develop/doc/factory/work-item-metrics-v1.schema.json",
   "title": "midnight-libs factory work-item metrics v1",
   "type": "object",
   "additionalProperties": false,
@@ -23,7 +23,7 @@
   ],
   "properties": {
     "schemaVersion": { "const": 1 },
-    "repository": { "const": "MediaNoxLabs/midnight-identity" },
+    "repository": { "enum": ["betsudo/midnight-identity", "MediaNoxLabs/midnight-identity"] },
     "issue": { "type": "integer", "minimum": 1 },
     "pr": { "type": ["integer", "null"], "minimum": 1 },
     "headSha": { "type": "string", "pattern": "^[0-9a-f]{40}$" },

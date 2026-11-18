@@ -21,7 +21,6 @@ const SUBJECT = new RegExp(
 );
 const DELIVERY_TARGET = /^(?:develop|rust-codegen)$/u;
 const DELIVERY_TARGET_MARKER = /<!--\s*factory-delivery-target:\s*([^\s]+)\s*-->/gu;
-const STACKED_PARENT_MARKER = /<!--\s*factory-stacked-parent:\s*([^\s]+)\s*-->/gu;
 const SQUASH_SUBJECT = /^(.*) \(#[1-9]\d*\)$/u;
 const SAFE_REPO = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/u;
 const SAFE_SHA = /^[0-9a-f]{40}$/u;
@@ -45,24 +44,16 @@ function markerValues(body, pattern) {
 export function validatePullRequestBase({ base, head, body }) {
   const errors = [];
   const targets = markerValues(body ?? "", DELIVERY_TARGET_MARKER);
-  const parents = markerValues(body ?? "", STACKED_PARENT_MARKER);
   if (targets.length !== 1) {
     errors.push(`pull-request body must contain exactly one factory delivery-target marker; found ${targets.length}`);
-  }
-  if (parents.length !== 1) {
-    errors.push(`pull-request body must contain exactly one factory stacked-parent marker; found ${parents.length}`);
   }
   if (errors.length) return errors;
 
   const [target] = targets;
-  const [parent] = parents;
-  if (!DELIVERY_TARGET.test(target)) errors.push(`unsupported final delivery target: ${target}`);
-  if (parent === "none") {
-    if (base !== target) errors.push(`pull-request base ${base} does not match final delivery target ${target}`);
-  } else {
-    errors.push(...validateBranch(parent).map((error) => `stacked parent ${error}`));
-    if (base !== parent) errors.push(`pull-request base ${base} does not match recorded stacked parent ${parent}`);
-    if (head === parent) errors.push("pull-request head and stacked parent must be different branches");
+  if (!DELIVERY_TARGET.test(target)) errors.push(`unsupported final delivery target: ${target}; use develop or rust-codegen`);
+  if (base !== target) {
+    if (!BRANCH.test(base)) errors.push(`pull-request base ${base} must equal final delivery target ${target} or be a temporary <type>/issue-N branch; retarget the PR`);
+    if (head === base) errors.push("pull-request head and temporary base must be different branches");
   }
   return errors;
 }

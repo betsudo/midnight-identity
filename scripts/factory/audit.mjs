@@ -10,7 +10,7 @@ import path from "node:path";
 
 import { loadExtractionPolicy, validateExtractionPolicy } from "./reference-repositories.mjs";
 
-const REPOSITORY = "MediaNoxLabs/midnight-identity";
+const REPOSITORY = process.env.GITHUB_REPOSITORY || "betsudo/midnight-identity";
 const EXACT_VERSION = /^(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)(?:-[0-9A-Za-z.-]+)?$/u;
 
 function command(program, args, options = {}) {

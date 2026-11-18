@@ -29,6 +29,31 @@ future `milestone-x.y.z` branch force the full release plan. The planner emits
 a stable GitHub output contract consumed by `.github/workflows/ci.yml`; its
 contract tests are part of the always-on policy lane.
 
+## Admission and metadata events
+
+Every expensive lane (including mobile within unit) depends on successful
+policy admission. `Required CI` reports policy as the owning failure rather
+than repeating blocked lane failures. The immutable plan summary records the
+event reason and exact head/base; the aggregate lists selected and deliberately
+skipped lanes. Policy output supplies the failing contract and repair guidance.
+
+Nonempty `pull_request.edited` changes consisting entirely of `body` and/or
+`title` may select policy-only only after authenticated Actions evidence proves
+a prior completed successful source-validation run for the same repository,
+PR, workflow, exact head and exact base. Its run-owned immutable plan must match
+the ordinary source plan (including paths, packages and selected targets).
+Policy-only runs cannot recursively supply this proof; the current run is
+excluded. Lookup is bounded, and missing, expired, malformed, incompatible or
+unavailable API/artifact evidence retains ordinary affected/full validation.
+Thus shared concurrency cancellation cannot replace uncompleted source checks
+with a green metadata-only aggregate. The plan records the reused run/artifact
+IDs, or the ordinary-validation fallback reason. The plan job alone gains
+`actions: read`; labels and comments supply no evidence.
+
+Base edits, unknown/empty edits and source events always retain affected/full
+selection; pushes, schedules and manual runs remain full. Hosted signature and
+immutable-Git checks use event repository identity and URL.
+
 ## Cache policy
 
 Nix uses only public substituters configured by the flake and the standard Nix

@@ -6,7 +6,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
-import { formatRecord, validateRecord } from "../../scripts/factory/metrics.mjs";
+import { REPOSITORY, formatRecord, template, validateRecord } from "../../scripts/factory/metrics.mjs";
 
 function record() {
   return {
@@ -56,6 +56,13 @@ test("unknown fields, inconsistent durations, duplicate checks, and secrets fail
 test("the committed JSON Schema stays closed and names every metrics field", async () => {
   const schema = JSON.parse(await readFile(new URL("../../doc/factory/work-item-metrics-v1.schema.json", import.meta.url), "utf8"));
   assert.equal(schema.additionalProperties, false);
+  assert.deepEqual(schema.properties.repository.enum, [REPOSITORY, "MediaNoxLabs/midnight-identity"]);
+  for (const repository of schema.properties.repository.enum) {
+    assert.equal(validateRecord({ ...record(), repository }).ok, true);
+  }
+  assert.equal(validateRecord({ ...record(), repository: "example/other" }).ok, false);
+  assert.equal(template(["--issue", "117", "--head", "a".repeat(40),
+    "--model", "test/model", "--reasoning", "medium"]).repository, REPOSITORY);
   for (const key of ["model", "reasoningProfile", "durations", "tokens", "resources", "validations", "failure"]) {
     assert.ok(schema.required.includes(key), key);
     assert.ok(schema.properties[key], key);

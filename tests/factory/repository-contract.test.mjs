@@ -176,7 +176,7 @@ test("workflow pins actions, uses a stable aggregator, and never caches target",
 test("pull-request template records exact delivery target and stack disposition", async () => {
   const template = await readFile(path.join(root, ".github", "pull_request_template.md"), "utf8");
   assert.equal([...template.matchAll(/factory-delivery-target:/gu)].length, 1);
-  assert.equal([...template.matchAll(/factory-stacked-parent:/gu)].length, 1);
+  assert.equal([...template.matchAll(/factory-stacked-parent:/gu)].length, 0);
   assert.match(template, /No review thread remains unresolved before readiness is claimed/u);
 });
 
