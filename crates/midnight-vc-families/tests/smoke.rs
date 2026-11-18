@@ -28,6 +28,7 @@
 mod support;
 
 use midnight_vc_families::contract::digital_passport::pure_circuits;
+use midnight_vc_families::runtime::{BoundedUint, FixedBytes};
 use support::{civil_date_from_epoch_days, create_digital_passport_fixture, epoch_days_from_civil};
 
 /// Claim root: deterministic, 32 bytes, and a different root when any one
@@ -42,11 +43,11 @@ fn claim_root_is_deterministic_sized_and_alteration_sensitive() {
     let root2 = pure_circuits::digital_passport_claim_root(fixture.claim_commitments.clone())
         .expect("claim root computes again");
 
-    assert_eq!(root1.len(), 32, "claim root is Bytes<32>");
+    assert_eq!(root1.0.len(), 32, "claim root is Bytes<32>");
     assert_eq!(root1, root2, "same fixture hashes to the same root");
 
     let mut altered = fixture.claim_commitments.clone();
-    altered.dateOfBirthCommitment = [99u8; 32];
+    altered.dateOfBirthCommitment = FixedBytes([99u8; 32]);
     let altered_root = pure_circuits::digital_passport_claim_root(altered).expect("altered claim root computes");
     assert_ne!(altered_root, root1, "altering one commitment changes the root");
 }
@@ -91,11 +92,11 @@ fn claim_commitments_are_deterministic_and_opening_sensitive() {
     assert_eq!(document_number, fixture.claim_commitments.documentNumberCommitment);
     assert_eq!(issuing_state, fixture.claim_commitments.issuingStateCommitment);
 
-    let different_opening = [42u8; 32];
+    let different_opening = FixedBytes([42u8; 32]);
     let first_name_other_opening =
         pure_circuits::first_name_commitment(fixture.claim_values.firstNameValuePadded, different_opening)
             .expect("firstNameCommitment computes with a different opening");
-    assert_eq!(first_name.len(), 32, "commitments are Bytes<32>");
+    assert_eq!(first_name.0.len(), 32, "commitments are Bytes<32>");
     assert_ne!(
         first_name_other_opening, first_name,
         "same value under a different opening commits differently"
@@ -110,7 +111,7 @@ fn document_number_null_commitment_is_a_deterministic_sentinel() {
     let null1 = pure_circuits::document_number_null_commitment().expect("null commitment computes");
     let null2 = pure_circuits::document_number_null_commitment().expect("null commitment computes again");
 
-    assert_eq!(null1.len(), 32, "null commitment is Bytes<32>");
+    assert_eq!(null1.0.len(), 32, "null commitment is Bytes<32>");
     assert_eq!(null1, null2);
 
     let fixture = create_digital_passport_fixture();
@@ -132,33 +133,33 @@ fn document_number_null_commitment_is_a_deterministic_sentinel() {
 fn age_predicate_witness_verification_rejects_forged_civil_dates() {
     let fixture = create_digital_passport_fixture();
     let current_date = civil_date_from_epoch_days(fixture.current_day);
-    let date_of_birth_date = civil_date_from_epoch_days(fixture.claim_values.dateOfBirthDays);
+    let date_of_birth_date = civil_date_from_epoch_days(fixture.claim_values.dateOfBirthDays.value() as u32);
 
     // Precondition, pinning the ported decomposition pair against each
     // other (upstream asserts its calendar inputs the same way): each
     // witness must be the civil date of exactly its day number.
     assert_eq!(
         epoch_days_from_civil(
-            i64::from(current_date.year),
-            i64::from(current_date.month),
-            i64::from(current_date.day),
+            current_date.year.value() as i64,
+            current_date.month.value() as i64,
+            current_date.day.value() as i64,
         ),
         i64::from(fixture.current_day)
     );
     assert_eq!(
         epoch_days_from_civil(
-            i64::from(date_of_birth_date.year),
-            i64::from(date_of_birth_date.month),
-            i64::from(date_of_birth_date.day),
+            date_of_birth_date.year.value() as i64,
+            date_of_birth_date.month.value() as i64,
+            date_of_birth_date.day.value() as i64,
         ),
-        i64::from(fixture.claim_values.dateOfBirthDays)
+        fixture.claim_values.dateOfBirthDays.value() as i64
     );
 
     // Valid decomposition of both day numbers: accepted.
     pure_circuits::assert_valid_digital_passport_age_predicate(
         fixture.credential.clone(),
         fixture.presentation.clone(),
-        fixture.current_day,
+        BoundedUint::new(fixture.current_day.into()).expect("in range"),
         fixture.claim_values.dateOfBirthDays,
         fixture.openings.dateOfBirthOpening,
         current_date.clone(),
@@ -169,11 +170,12 @@ fn age_predicate_witness_verification_rejects_forged_civil_dates() {
     // Corrupted quotient field: breaks the range check that pins
     // floor(yearAdjusted / 4).
     let mut forged_quotient = current_date.clone();
-    forged_quotient.yearAdjustedQuotient4 += 1;
+    forged_quotient.yearAdjustedQuotient4 =
+        BoundedUint::new(forged_quotient.yearAdjustedQuotient4.value() + 1).expect("in range");
     let err = pure_circuits::assert_valid_digital_passport_age_predicate(
         fixture.credential.clone(),
         fixture.presentation.clone(),
-        fixture.current_day,
+        BoundedUint::new(fixture.current_day.into()).expect("in range"),
         fixture.claim_values.dateOfBirthDays,
         fixture.openings.dateOfBirthOpening,
         forged_quotient,
@@ -191,7 +193,7 @@ fn age_predicate_witness_verification_rejects_forged_civil_dates() {
     let err = pure_circuits::assert_valid_digital_passport_age_predicate(
         fixture.credential.clone(),
         fixture.presentation.clone(),
-        fixture.current_day,
+        BoundedUint::new(fixture.current_day.into()).expect("in range"),
         fixture.claim_values.dateOfBirthDays,
         fixture.openings.dateOfBirthOpening,
         mismatched,

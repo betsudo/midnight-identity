@@ -54,7 +54,7 @@
         fi
 
         # Retain the Ledger 8 proof source for the Passport Vault evidence
-        # generator. The DID Cargo graph uses released Ledger 9 crates.
+        # generator. DID and VC Cargo graphs use the Ledger 9 cohort.
         TARGET="${midnightZkSrc}"
         LINK="$ROOT_DIR/third_party/midnight-zk"
         if [ -L "$LINK" ] && [ "$(readlink "$LINK")" = "$TARGET" ]; then
@@ -92,9 +92,8 @@
           echo "Linked $LINK -> $TARGET"
         fi
 
-        # Materialise the DID-only Ledger 9 runtime separately. This prevents
-        # the optional path override from changing VC/Passport's Ledger 8
-        # runtime identity inside the same development shell.
+        # Materialise the DID/VC Ledger 9 runtime separately. Passport Account
+        # and Vault keep their Ledger 8 runtime identity in this shell.
         mkdir -p "$ROOT_DIR/third_party/compact-did"
 
         TARGET="${compactDidRuntimeRsSrc}"

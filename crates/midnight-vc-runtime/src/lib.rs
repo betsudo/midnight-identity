@@ -30,9 +30,16 @@
 
 #![forbid(unsafe_code)]
 #![warn(missing_docs, rust_2018_idioms, clippy::all)]
+#![allow(missing_docs)] // generated crate-root items carry upstream names
 
 /// Crate version reported by the build.
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
+
+// The Ledger 9 Rust AST backend emits absolute `crate::types` and
+// `crate::pure_circuits` references. Mount the generated unit at crate root,
+// then preserve the historical `contract::credentials::*` path with re-exports
+// in `contract/mod.rs`.
+include!("contract/credentials.rs");
 
 pub mod contract;
 

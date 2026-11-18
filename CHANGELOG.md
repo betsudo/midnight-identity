@@ -14,6 +14,15 @@ and the project adheres to [SemVer](https://semver.org/).
 
 ### Changed
 
+- **VC Core and DigitalPassport advance to the Ledger 9 Rust AST cohort
+  (issue #108)** — `midnight-vc-runtime` is regenerated from the exact
+  `@midnight-ntwrk/credential-compact@1.0.0-rc1` registry artifact and
+  `midnight-vc-families` stages the unchanged
+  `@midnight-ntwrk/midnight-vc-passport@0.1.0-rc5` family source against that
+  core. Both use the same immutable Compact and Ledger revisions as the DID
+  migration. Existing commitment, body-root, challenge, validation, and
+  detached-proof vectors remain byte-for-byte unchanged.
+
 - **DID runtime advances to the coordinated Ledger 9.1.0.2 Rust AST graph
   (issue #107)** — generated bindings and compatibility evidence now use
   `betsudo/compact@b049407f`, `betsudo/midnight-ledger@f273996e`,
@@ -23,8 +32,8 @@ and the project adheres to [SemVer](https://semver.org/).
   the twelve ZKIR v3 artifacts remain byte-for-byte unchanged.
   `midnight-storage=3.1.0` removes `sysinfo`
   from the normal dependency cone, restoring iOS-simulator and Android checks;
-  VC and Passport remain intentionally isolated on their qualified Ledger 8
-  graph. This is a public runtime migration: Ledger 8-specific wallet, proof,
+  Passport Account/Vault remain intentionally isolated on their qualified
+  Ledger 8 graph. This is a public runtime migration: Ledger 8-specific wallet, proof,
   node, transaction, and generated-executor DTOs are removed in favor of the
   `Ledger9DidProvider` execution boundary. A concrete funded Ledger 9 provider
   is still tracked by issue #9 and is not claimed by this release candidate.
@@ -43,19 +52,21 @@ and the project adheres to [SemVer](https://semver.org/).
   overrides as an explicit local acceleration. CI verifies a clean external
   consumer with `cargo metadata` and a focused native `cargo check`.
 
-- **Digital Passport family moves to `midnight-vc-passport@0.1.0-rc5`** —
+- **Digital Passport family initially moved to `midnight-vc-passport@0.1.0-rc5`** —
   `midnight-vc-families`' `digital-passport` bindings are generated from the
   `@midnight-ntwrk/midnight-vc-passport@0.1.0-rc5` npm tarball
   (`midnightntwrk/midnight-vc-passport`, SHA-256 pinned), fetched from
   registry.npmjs.org like the `credential-compact` core after the interim
   GitHub-Release distribution window closed, against
-  `@midnight-ntwrk/credential-compact@0.2.0` (SHA-256 pinned). The generated
+  `@midnight-ntwrk/credential-compact@0.2.0` (SHA-256 pinned). This earlier
+  baseline is superseded by the Ledger 9 / VC Core 1.0.0-rc1 migration above.
+  The generated
   surface follows upstream: the protocol messages are now
   `DigitalPassportIssuance_*` / `DigitalPassportVerification_*`, signer
   authorization and verifier-request proofs are added, and the secret,
   blinded-secret, Jubjub and off-chain-Midnight holder bindings, schema
   capabilities/descriptors and verifier-scoped pseudonyms are removed.
-- **`midnight-vc-runtime` tracks VC Core 0.2.0** — `contract::credentials`
+- **`midnight-vc-runtime` initially tracked VC Core 0.2.0** — `contract::credentials`
   is generated from the `credential-compact@0.2.0` npm package instead of the
   frozen `midnight-verifiable-credentials` monorepo pin.
 - **Compact compiler bumped to `codegen-rust@4f743ecc`** (0.31.122,
@@ -87,6 +98,12 @@ and the project adheres to [SemVer](https://semver.org/).
   the full default shell with public Nix binary caches.
 
 ### Added
+
+- **Native Rust `did:midnight` VC binding (issue #108)** — new
+  `midnight-vc-did-binding` crate regenerates the published
+  `@midnight-ntwrk/credential-did-midnight@1.0.0-rc1` Compact surface and ports
+  its subject, relationship, deactivation, state-version, native Jubjub JWK,
+  and raw fragment-hash refusal rules into a ledger-neutral Rust adapter.
 
 - **TS↔Rust parity vectors for the digital-passport bindings** —
   `midnight-vc-families/tests/ts_parity.rs` checks claim commitments, claim and

@@ -30,15 +30,13 @@ default = [  ]
 digital-passport = [  ]
 
 [dependencies]
-# The runtime the generated circuits call into. Its immutable Git revision is
-# declared at the workspace root; Nix path substitution is opt-in.
-midnight-compact-runtime = { workspace = true }
-
-# Ledger crates the generated code needs at link time (transitively via
-# midnight-compact-runtime). The root manifest keeps them on one Git source.
-midnight-base-crypto     = { workspace = true }
-midnight-onchain-runtime = { workspace = true }
-midnight-serialize       = { workspace = true }
+# The published Passport source is still Ledger 8, but its pure Compact family
+# compiles unchanged when staged with VC Core 1.0.0-rc1. The generated Rust must
+# therefore use the exact Ledger 9 cohort selected by that core.
+midnight-compact-runtime = { package = "midnight-compact-runtime", git = "https://github.com/betsudo/compact", rev = "d6513a24debac14d43a8199460d9dc2c6d9af2b1", features = [ "experimental-functional" ] }
+midnight-base-crypto     = { version = "=1.1.1", git = "https://github.com/betsudo/midnight-ledger", rev = "6fbc2e3900845a858f70eebf8a0deab1d4d3c0d6" }
+midnight-onchain-runtime = { version = "=4.0.1", git = "https://github.com/betsudo/midnight-ledger", rev = "6fbc2e3900845a858f70eebf8a0deab1d4d3c0d6" }
+midnight-serialize       = { version = "=1.2.1", git = "https://github.com/betsudo/midnight-ledger", rev = "6fbc2e3900845a858f70eebf8a0deab1d4d3c0d6" }
 
 [dev-dependencies]
 # SHA-256 for the deterministic test fixtures ported from the family

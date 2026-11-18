@@ -37,6 +37,7 @@ use midnight_vc_families::contract::digital_passport::{
     DigitalPassportDisclosures, DigitalPassportOpenings, ExplicitHolderBinding, NoPublicClaims, NoStatusBinding,
     Presentation, SchemaRef, VerificationMethodRef, pure_circuits,
 };
+use midnight_vc_families::runtime::{BoundedUint, FixedBytes};
 use sha2::{Digest, Sha256};
 
 /// Claim values + openings + the commitments derived from them, plus the
@@ -81,9 +82,9 @@ fn pad_text<const N: usize>(value: &str) -> [u8; N] {
 fn verification_method_ref(label: &str) -> VerificationMethodRef {
     VerificationMethodRef {
         controllerAddress: midnight_vc_families::contract::digital_passport::ContractAddress {
-            bytes: sha256(&format!("contract:{label}")),
+            bytes: FixedBytes(sha256(&format!("contract:{label}"))),
         },
-        methodId: pad_text(&format!("#{label}-key-1")),
+        methodId: FixedBytes(pad_text(&format!("#{label}-key-1"))),
     }
 }
 
@@ -126,26 +127,26 @@ pub fn claim_commitments(
 /// with `hasDocumentNumber = true` (the default).
 pub fn create_digital_passport_fixture() -> DigitalPassportFixture {
     let claim_values = DigitalPassportClaimValues {
-        firstNameValuePadded: pad_text::<64>("Alice"),
-        lastNameValuePadded: pad_text::<64>("Example"),
-        dateOfBirthDays: 3650,
-        documentNumberValue: pad_text::<32>("AB1234567"),
-        issuingStateValue: pad_text::<32>("US"),
+        firstNameValuePadded: FixedBytes(pad_text::<64>("Alice")),
+        lastNameValuePadded: FixedBytes(pad_text::<64>("Example")),
+        dateOfBirthDays: BoundedUint::new(3650).expect("in range"),
+        documentNumberValue: FixedBytes(pad_text::<32>("AB1234567")),
+        issuingStateValue: FixedBytes(pad_text::<32>("US")),
     };
     let openings = DigitalPassportOpenings {
-        firstNameOpening: sha256("opening:first-name"),
-        lastNameOpening: sha256("opening:last-name"),
-        dateOfBirthOpening: sha256("opening:date-of-birth"),
-        documentNumberOpening: sha256("opening:document-number"),
-        issuingStateOpening: sha256("opening:issuing-state"),
+        firstNameOpening: FixedBytes(sha256("opening:first-name")),
+        lastNameOpening: FixedBytes(sha256("opening:last-name")),
+        dateOfBirthOpening: FixedBytes(sha256("opening:date-of-birth")),
+        documentNumberOpening: FixedBytes(sha256("opening:document-number")),
+        issuingStateOpening: FixedBytes(sha256("opening:issuing-state")),
     };
     let claim_commitments = claim_commitments(&claim_values, &openings);
 
     let schema = SchemaRef {
-        packageId: pad_text::<32>("midnight:vc:digital-passport"),
-        schemaId: pad_text::<32>("digital-passport:v1"),
-        majorVersion: 1,
-        minorVersion: 0,
+        packageId: FixedBytes(pad_text::<32>("midnight:vc:digital-passport")),
+        schemaId: FixedBytes(pad_text::<32>("digital-passport:v1")),
+        majorVersion: BoundedUint::new(1).expect("in range"),
+        minorVersion: BoundedUint::new(0).expect("in range"),
     };
     let issuer_verification_method_ref = verification_method_ref("issuer");
     let holder_binding = ExplicitHolderBinding {
@@ -153,40 +154,40 @@ pub fn create_digital_passport_fixture() -> DigitalPassportFixture {
     };
 
     let credential = Credential {
-        version: 1,
+        version: BoundedUint::new(1).expect("in range"),
         schema: schema.clone(),
         issuerVerificationMethodRef: issuer_verification_method_ref.clone(),
         holderBinding: holder_binding.clone(),
         statusBinding: NoStatusBinding {},
-        issuedAt: 10_000,
+        issuedAt: BoundedUint::new(10_000).expect("in range"),
         hasExpiration: true,
-        expiresAt: 20_000,
+        expiresAt: BoundedUint::new(20_000).expect("in range"),
         claims: NoPublicClaims {},
         claimRoot: pure_circuits::digital_passport_claim_root(claim_commitments.clone()).expect("claim root computes"),
         claimCommitments: claim_commitments.clone(),
     };
 
     let presentation = Presentation {
-        version: 1,
+        version: BoundedUint::new(1).expect("in range"),
         schema,
         credentialClaimRoot: credential.claimRoot,
         issuerVerificationMethodRef: issuer_verification_method_ref,
         holderBinding: holder_binding,
         disclosed: DigitalPassportDisclosures {
             revealFirstName: false,
-            firstNameValuePadded: [0u8; 64],
-            firstNameOpening: [0u8; 32],
+            firstNameValuePadded: FixedBytes([0u8; 64]),
+            firstNameOpening: FixedBytes([0u8; 32]),
             revealLastName: true,
             lastNameValuePadded: claim_values.lastNameValuePadded,
             lastNameOpening: openings.lastNameOpening,
             proveAgeOverThreshold: true,
-            ageThresholdYears: 18,
+            ageThresholdYears: BoundedUint::new(18).expect("in range"),
             revealDocumentNumber: false,
-            documentNumberValue: [0u8; 32],
-            documentNumberOpening: [0u8; 32],
+            documentNumberValue: FixedBytes([0u8; 32]),
+            documentNumberOpening: FixedBytes([0u8; 32]),
             revealIssuingState: false,
-            issuingStateValue: [0u8; 32],
-            issuingStateOpening: [0u8; 32],
+            issuingStateValue: FixedBytes([0u8; 32]),
+            issuingStateOpening: FixedBytes([0u8; 32]),
         },
     };
 
@@ -232,12 +233,12 @@ pub fn civil_date_from_epoch_days(epoch_days: u32) -> DigitalPassportCivilDate {
     let shifted_month = if month >= 3 { month - 3 } else { month + 9 };
 
     DigitalPassportCivilDate {
-        year: civil_year as u32,
-        month: month as u32,
-        day: day as u32,
-        yearAdjustedQuotient4: year_adjusted.div_euclid(4) as u32,
-        yearAdjustedQuotient100: year_adjusted.div_euclid(100) as u32,
-        yearAdjustedQuotient400: year_adjusted.div_euclid(400) as u32,
-        marchBasedMonthDayOffset: ((153 * shifted_month + 2) / 5) as u32,
+        year: BoundedUint::new(civil_year as u128).expect("in range"),
+        month: BoundedUint::new(month as u128).expect("in range"),
+        day: BoundedUint::new(day as u128).expect("in range"),
+        yearAdjustedQuotient4: BoundedUint::new(year_adjusted.div_euclid(4) as u128).expect("in range"),
+        yearAdjustedQuotient100: BoundedUint::new(year_adjusted.div_euclid(100) as u128).expect("in range"),
+        yearAdjustedQuotient400: BoundedUint::new(year_adjusted.div_euclid(400) as u128).expect("in range"),
+        marchBasedMonthDayOffset: BoundedUint::new(((153 * shifted_month + 2) / 5) as u128).expect("in range"),
     }
 }

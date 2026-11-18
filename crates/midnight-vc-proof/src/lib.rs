@@ -246,8 +246,11 @@ pub fn sign_with_rng<R: RngCore + CryptoRng + ?Sized>(
 
 /// Compute the generated VC issuance challenge for a partial proof.
 pub fn issuance_challenge(body_root: [u8; 32], proof: &IssuanceProof) -> Result<Fr, ProofError> {
-    core::pure_circuits::issuance_proof_challenge(body_root, runtime_proof(proof, EmbeddedFr::from(0_u64)))
-        .map_err(|_| ProofError::ChallengeUnavailable)
+    core::pure_circuits::issuance_proof_challenge(
+        core::runtime::FixedBytes(body_root),
+        runtime_proof(proof, EmbeddedFr::from(0_u64)),
+    )
+    .map_err(|_| ProofError::ChallengeUnavailable)
 }
 
 /// Encode a detached proof as canonical compact-value-v1 bytes.
@@ -330,6 +333,7 @@ pub fn verify_body_root(body_root: [u8; 32], detached_proof: &[u8]) -> Verificat
 pub fn digital_passport_body_root(credential_bytes: &[u8]) -> Result<[u8; 32], ProofError> {
     let credential = decode_digital_passport_credential(credential_bytes)?;
     passport::pure_circuits::digital_passport_credential_body_root(credential)
+        .map(|root| root.0)
         .map_err(|_| ProofError::ChallengeUnavailable)
 }
 
@@ -364,9 +368,9 @@ pub fn verify_digital_passport(
             );
         }
     };
-    if credential.issuerVerificationMethodRef.controllerAddress.bytes
+    if credential.issuerVerificationMethodRef.controllerAddress.bytes.0
         != expected_issuer.verification_method.controller_address
-        || credential.issuerVerificationMethodRef.methodId != expected_issuer.verification_method.method_id
+        || credential.issuerVerificationMethodRef.methodId.0 != expected_issuer.verification_method.method_id
         || proof.signer != expected_issuer.verification_method
     {
         return report(
@@ -498,39 +502,39 @@ fn sign_with_nonce(
 fn decode_digital_passport_credential(bytes: &[u8]) -> Result<passport::Credential, ProofError> {
     let chunks = parse_mcv1(bytes, DIGITAL_PASSPORT_CREDENTIAL_CHUNKS, MAX_CREDENTIAL_BYTES)?;
     Ok(passport::Credential {
-        version: integer_u16(chunks[0])?,
+        version: bounded_u16(integer_u16(chunks[0])?)?,
         schema: passport::SchemaRef {
-            packageId: fixed_32(chunks[1])?,
-            schemaId: fixed_32(chunks[2])?,
-            majorVersion: integer_u16(chunks[3])?,
-            minorVersion: integer_u16(chunks[4])?,
+            packageId: core::runtime::FixedBytes(fixed_32(chunks[1])?),
+            schemaId: core::runtime::FixedBytes(fixed_32(chunks[2])?),
+            majorVersion: bounded_u16(integer_u16(chunks[3])?)?,
+            minorVersion: bounded_u16(integer_u16(chunks[4])?)?,
         },
         issuerVerificationMethodRef: passport_vmr(chunks[5], chunks[6])?,
         holderBinding: passport::ExplicitHolderBinding {
             holderVerificationMethodRef: passport_vmr(chunks[7], chunks[8])?,
         },
         statusBinding: passport::NoStatusBinding {},
-        issuedAt: integer_u64(chunks[9])?,
+        issuedAt: bounded_u64(integer_u64(chunks[9])?)?,
         hasExpiration: boolean(chunks[10])?,
-        expiresAt: integer_u64(chunks[11])?,
+        expiresAt: bounded_u64(integer_u64(chunks[11])?)?,
         claims: passport::NoPublicClaims {},
         claimCommitments: passport::DigitalPassportClaimCommitments {
-            firstNameCommitment: fixed_32(chunks[12])?,
-            lastNameCommitment: fixed_32(chunks[13])?,
-            dateOfBirthCommitment: fixed_32(chunks[14])?,
-            documentNumberCommitment: fixed_32(chunks[15])?,
-            issuingStateCommitment: fixed_32(chunks[16])?,
+            firstNameCommitment: core::runtime::FixedBytes(fixed_32(chunks[12])?),
+            lastNameCommitment: core::runtime::FixedBytes(fixed_32(chunks[13])?),
+            dateOfBirthCommitment: core::runtime::FixedBytes(fixed_32(chunks[14])?),
+            documentNumberCommitment: core::runtime::FixedBytes(fixed_32(chunks[15])?),
+            issuingStateCommitment: core::runtime::FixedBytes(fixed_32(chunks[16])?),
         },
-        claimRoot: fixed_32(chunks[17])?,
+        claimRoot: core::runtime::FixedBytes(fixed_32(chunks[17])?),
     })
 }
 
 fn passport_vmr(address: &[u8], method: &[u8]) -> Result<passport::VerificationMethodRef, ProofError> {
     Ok(passport::VerificationMethodRef {
         controllerAddress: passport::ContractAddress {
-            bytes: fixed_32(address)?,
+            bytes: core::runtime::FixedBytes(fixed_32(address)?),
         },
-        methodId: fixed_32(method)?,
+        methodId: core::runtime::FixedBytes(fixed_32(method)?),
     })
 }
 
@@ -538,15 +542,15 @@ fn passport_proof(proof: &IssuanceProof) -> passport::Proof {
     passport::Proof {
         signerVerificationMethodRef: passport::VerificationMethodRef {
             controllerAddress: passport::ContractAddress {
-                bytes: proof.signer.controller_address,
+                bytes: core::runtime::FixedBytes(proof.signer.controller_address),
             },
-            methodId: proof.signer.method_id,
+            methodId: core::runtime::FixedBytes(proof.signer.method_id),
         },
-        createdAt: proof.created_at,
-        challengeHash: proof.challenge_hash,
-        publicKey: proof.public_key,
+        createdAt: core::runtime::BoundedUint::new(proof.created_at.into()).expect("u64 is in range"),
+        challengeHash: core::runtime::FixedBytes(proof.challenge_hash),
+        publicKey: proof.public_key.into(),
         signature: passport::Signature {
-            r: proof.announcement,
+            r: proof.announcement.into(),
             s: field_from_scalar(&proof.response),
         },
     }
@@ -556,18 +560,26 @@ fn runtime_proof(proof: &IssuanceProof, response: EmbeddedFr) -> core::Proof {
     core::Proof {
         signerVerificationMethodRef: core::VerificationMethodRef {
             controllerAddress: core::ContractAddress {
-                bytes: proof.signer.controller_address,
+                bytes: core::runtime::FixedBytes(proof.signer.controller_address),
             },
-            methodId: proof.signer.method_id,
+            methodId: core::runtime::FixedBytes(proof.signer.method_id),
         },
-        createdAt: proof.created_at,
-        challengeHash: proof.challenge_hash,
-        publicKey: proof.public_key,
+        createdAt: core::runtime::BoundedUint::new(proof.created_at.into()).expect("u64 is in range"),
+        challengeHash: core::runtime::FixedBytes(proof.challenge_hash),
+        publicKey: proof.public_key.into(),
         signature: core::Signature {
-            r: proof.announcement,
+            r: proof.announcement.into(),
             s: field_from_scalar(&response),
         },
     }
+}
+
+fn bounded_u16(value: u16) -> Result<core::runtime::BoundedUint<65535>, ProofError> {
+    core::runtime::BoundedUint::new(value.into()).map_err(|_| ProofError::NonCanonicalCrypto)
+}
+
+fn bounded_u64(value: u64) -> Result<core::runtime::BoundedUint<18446744073709551615>, ProofError> {
+    core::runtime::BoundedUint::new(value.into()).map_err(|_| ProofError::NonCanonicalCrypto)
 }
 
 fn parse_mcv1(bytes: &[u8], expected_chunks: usize, byte_limit: usize) -> Result<Vec<&[u8]>, ProofError> {

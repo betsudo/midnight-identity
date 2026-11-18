@@ -33,7 +33,9 @@
 #[allow(dead_code)] // the civil-date helpers serve the smoke tests only
 mod support;
 
-use midnight_compact_runtime::{CompactError, Fr, JubjubPoint, construct_jubjub_point, ec_mul_generator};
+use midnight_compact_runtime::{
+    BoundedUint, CompactError, FixedBytes, Fr, JubjubPoint, construct_jubjub_point, ec_mul_generator,
+};
 use midnight_vc_families::contract::digital_passport::{Proof, Signature, VerificationMethodRef, pure_circuits};
 use serde_json::Value;
 use sha2::{Digest, Sha256};
@@ -55,7 +57,7 @@ fn field(value: &Value) -> Fr {
 }
 
 fn point(value: &Value) -> JubjubPoint {
-    construct_jubjub_point(field(&value["x"]), field(&value["y"]))
+    construct_jubjub_point(field(&value["x"]), field(&value["y"])).expect("valid captured point")
 }
 
 fn sha256(value: &str) -> [u8; 32] {
@@ -69,8 +71,8 @@ fn sha256(value: &str) -> [u8; 32] {
 fn proof(signer: VerificationMethodRef, created_at: u64, challenge_hash: [u8; 32], captured: &Value) -> Proof {
     Proof {
         signerVerificationMethodRef: signer,
-        createdAt: created_at,
-        challengeHash: challenge_hash,
+        createdAt: BoundedUint::new(created_at.into()).expect("u64 in range"),
+        challengeHash: FixedBytes(challenge_hash),
         publicKey: point(&captured["publicKey"]),
         signature: Signature {
             r: point(&captured["signatureR"]),
@@ -110,15 +112,15 @@ fn claim_commitments_and_root_match_ts() {
     let fixture = create_digital_passport_fixture();
     let c = &fixture.claim_commitments;
     let expected = &v["claimCommitments"];
-    assert_eq!(c.firstNameCommitment, bytes32(&expected["firstNameCommitment"]));
-    assert_eq!(c.lastNameCommitment, bytes32(&expected["lastNameCommitment"]));
-    assert_eq!(c.dateOfBirthCommitment, bytes32(&expected["dateOfBirthCommitment"]));
+    assert_eq!(c.firstNameCommitment.0, bytes32(&expected["firstNameCommitment"]));
+    assert_eq!(c.lastNameCommitment.0, bytes32(&expected["lastNameCommitment"]));
+    assert_eq!(c.dateOfBirthCommitment.0, bytes32(&expected["dateOfBirthCommitment"]));
     assert_eq!(
-        c.documentNumberCommitment,
+        c.documentNumberCommitment.0,
         bytes32(&expected["documentNumberCommitment"])
     );
-    assert_eq!(c.issuingStateCommitment, bytes32(&expected["issuingStateCommitment"]));
-    assert_eq!(fixture.credential.claimRoot, bytes32(&v["claimRoot"]));
+    assert_eq!(c.issuingStateCommitment.0, bytes32(&expected["issuingStateCommitment"]));
+    assert_eq!(fixture.credential.claimRoot.0, bytes32(&v["claimRoot"]));
 }
 
 #[test]
@@ -126,12 +128,15 @@ fn body_roots_match_ts() {
     let v = vectors();
     let fixture = create_digital_passport_fixture();
     assert_eq!(
-        pure_circuits::digital_passport_credential_body_root(fixture.credential.clone()).expect("credential body root"),
+        pure_circuits::digital_passport_credential_body_root(fixture.credential.clone())
+            .expect("credential body root")
+            .0,
         bytes32(&v["credentialBodyRoot"])
     );
     assert_eq!(
         pure_circuits::digital_passport_presentation_body_root(fixture.presentation.clone())
-            .expect("presentation body root"),
+            .expect("presentation body root")
+            .0,
         bytes32(&v["presentationBodyRoot"])
     );
 }
@@ -143,19 +148,19 @@ fn signer_points_match_ts() {
     let v = vectors();
     assert_eq!(
         point(&v["credentialProof"]["publicKey"]),
-        ec_mul_generator(Fr::from(123_456_789u64))
+        ec_mul_generator(Fr::from(123_456_789u64)).expect("generator multiplication")
     );
     assert_eq!(
         point(&v["credentialProof"]["signatureR"]),
-        ec_mul_generator(Fr::from(11u64))
+        ec_mul_generator(Fr::from(11u64)).expect("generator multiplication")
     );
     assert_eq!(
         point(&v["presentationProof"]["publicKey"]),
-        ec_mul_generator(Fr::from(987_654_321u64))
+        ec_mul_generator(Fr::from(987_654_321u64)).expect("generator multiplication")
     );
     assert_eq!(
         point(&v["presentationProof"]["signatureR"]),
-        ec_mul_generator(Fr::from(17u64))
+        ec_mul_generator(Fr::from(17u64)).expect("generator multiplication")
     );
 }
 
@@ -202,7 +207,7 @@ fn validation_verdicts_match_ts() {
     .expect("TS accepts the fixture presentation");
 
     let mut tampered = fixture.credential.clone();
-    tampered.claimRoot[0] ^= 0x01;
+    tampered.claimRoot.0[0] ^= 0x01;
     let expected = v["tamperedClaimRootRejection"].as_str().expect("rejection message");
     let expected = expected.strip_prefix("failed assert: ").unwrap_or(expected);
     match pure_circuits::assert_valid_digital_passport_credential(tampered, credential_proof) {

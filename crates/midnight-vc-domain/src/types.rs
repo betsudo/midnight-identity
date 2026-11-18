@@ -84,6 +84,31 @@ pub struct CredentialClaimDescriptor {
     pub value_type: Option<String>,
 }
 
+/// VC Core 1.0 credential schema definition.
+///
+/// This is the exact data surface published by
+/// `@midnight-ntwrk/credential-model@1.0.0-rc1`. The older, richer
+/// [`CredentialFamilyDefinition`] remains available for compatibility, but is
+/// not treated as part of the 1.0 core contract.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CredentialSchemaDefinition {
+    /// Stable schema identifier.
+    pub id: String,
+    /// Semantic schema version.
+    pub version: String,
+    /// Optional human-readable name.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    /// Optional human-readable description.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+    /// Non-empty credential type names.
+    pub credential_types: Vec<String>,
+    /// Claim descriptors with unique identifiers.
+    pub claims: Vec<CredentialClaimDescriptor>,
+}
+
 /// The claim shape of a credential family, versioned independently of the family.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]

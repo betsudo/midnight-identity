@@ -2987,22 +2987,6 @@ dependencies = [
 
 [[package]]
 name = "midnight-coin-structure"
-version = "2.0.2"
-source = "git+https://github.com/MediaNoxLabs/midnight-ledger.git?rev=8655615e7c4cbf3a1187b3203bf72e69dc09b8dc#8655615e7c4cbf3a1187b3203bf72e69dc09b8dc"
-dependencies = [
- "fake",
- "lazy_static",
- "midnight-base-crypto 1.0.1",
- "midnight-serialize 1.1.1",
- "midnight-storage-core 1.2.1",
- "midnight-transient-crypto 2.1.1",
- "rand 0.8.6",
- "serde",
- "zeroize",
-]
-
-[[package]]
-name = "midnight-coin-structure"
 version = "3.0.1"
 source = "git+https://github.com/betsudo/midnight-ledger?rev=6fbc2e3900845a858f70eebf8a0deab1d4d3c0d6#6fbc2e3900845a858f70eebf8a0deab1d4d3c0d6"
 dependencies = [
@@ -3028,20 +3012,20 @@ dependencies = [
  "k256 0.14.0",
  "midnight-base-crypto 1.1.1",
  "midnight-circuits 7.3.0",
- "midnight-coin-structure 3.0.1",
- "midnight-compact-runtime-macros 0.2.0",
+ "midnight-coin-structure",
+ "midnight-compact-runtime-macros",
  "midnight-curves 0.3.1",
  "midnight-ledger-v9",
- "midnight-onchain-runtime 4.0.1",
- "midnight-onchain-state 4.0.1",
- "midnight-onchain-vm 4.0.1",
+ "midnight-onchain-runtime",
+ "midnight-onchain-state",
+ "midnight-onchain-vm",
  "midnight-proofs 0.8.2",
  "midnight-serialize 1.2.1",
- "midnight-storage 3.1.0",
+ "midnight-storage",
  "midnight-storage-core 1.2.3",
  "midnight-transient-crypto 3.1.0",
  "midnight-zk-stdlib 2.4.0",
- "midnight-zswap 9.0.1",
+ "midnight-zswap",
  "p256",
  "rand 0.8.6",
  "sha2 0.10.9",
@@ -3049,36 +3033,9 @@ dependencies = [
 ]
 
 [[package]]
-name = "midnight-compact-runtime"
-version = "0.16.102"
-source = "git+https://github.com/MediaNoxLabs/compact.git?rev=32e314770da10cc62dab30dcfeb340ec4c6bcb64#32e314770da10cc62dab30dcfeb340ec4c6bcb64"
-dependencies = [
- "midnight-base-crypto 1.0.1",
- "midnight-coin-structure 2.0.2",
- "midnight-compact-runtime-macros 0.16.102",
- "midnight-onchain-runtime 3.1.1",
- "midnight-onchain-state 3.0.1",
- "midnight-onchain-vm 3.1.1",
- "midnight-serialize 1.1.1",
- "midnight-storage 2.0.3",
- "midnight-transient-crypto 2.1.1",
- "midnight-zswap 8.2.0-rc.1",
-]
-
-[[package]]
 name = "midnight-compact-runtime-macros"
 version = "0.2.0"
 source = "git+https://github.com/betsudo/compact?rev=d6513a24debac14d43a8199460d9dc2c6d9af2b1#d6513a24debac14d43a8199460d9dc2c6d9af2b1"
-dependencies = [
- "proc-macro2",
- "quote 1.0.47",
- "syn 2.0.119",
-]
-
-[[package]]
-name = "midnight-compact-runtime-macros"
-version = "0.16.102"
-source = "git+https://github.com/MediaNoxLabs/compact.git?rev=32e314770da10cc62dab30dcfeb340ec4c6bcb64#32e314770da10cc62dab30dcfeb340ec4c6bcb64"
 dependencies = [
  "proc-macro2",
  "quote 1.0.47",
@@ -3217,7 +3174,7 @@ name = "midnight-did-jubjub-schnorr"
 version = "0.5.0"
 dependencies = [
  "hex",
- "midnight-transient-crypto 2.1.1",
+ "midnight-transient-crypto 3.1.0",
  "rand 0.8.6",
  "sha2 0.10.9",
  "thiserror 2.0.21",
@@ -3266,14 +3223,14 @@ dependencies = [
  "futures",
  "hex",
  "midnight-base-crypto 1.1.1",
- "midnight-coin-structure 3.0.1",
- "midnight-compact-runtime 0.2.0",
+ "midnight-coin-structure",
+ "midnight-compact-runtime",
  "midnight-did-domain",
  "midnight-did-method",
  "midnight-ledger-v9",
- "midnight-onchain-runtime 4.0.1",
+ "midnight-onchain-runtime",
  "midnight-serialize 1.2.1",
- "midnight-storage 3.1.0",
+ "midnight-storage",
  "midnight-transient-crypto 3.1.0",
  "midnight-zkir 3.2.1",
  "rand 0.8.6",
@@ -3306,15 +3263,6 @@ dependencies = [
 
 [[package]]
 name = "midnight-ledger-static"
-version = "9.0.0"
-source = "git+https://github.com/MediaNoxLabs/midnight-ledger.git?rev=8655615e7c4cbf3a1187b3203bf72e69dc09b8dc#8655615e7c4cbf3a1187b3203bf72e69dc09b8dc"
-dependencies = [
- "proc-macro2",
- "quote 1.0.47",
-]
-
-[[package]]
-name = "midnight-ledger-static"
 version = "10.0.0"
 source = "git+https://github.com/betsudo/midnight-ledger?rev=6fbc2e3900845a858f70eebf8a0deab1d4d3c0d6#6fbc2e3900845a858f70eebf8a0deab1d4d3c0d6"
 dependencies = [
@@ -3338,14 +3286,14 @@ dependencies = [
  "itertools",
  "lazy_static",
  "midnight-base-crypto 1.1.1",
- "midnight-coin-structure 3.0.1",
- "midnight-ledger-static 10.0.0",
- "midnight-onchain-runtime 4.0.1",
+ "midnight-coin-structure",
+ "midnight-ledger-static",
+ "midnight-onchain-runtime",
  "midnight-serialize 1.2.1",
- "midnight-storage 3.1.0",
+ "midnight-storage",
  "midnight-transient-crypto 2.2.0",
  "midnight-transient-crypto 3.1.0",
- "midnight-zswap 9.0.1",
+ "midnight-zswap",
  "rand 0.8.6",
  "rayon",
  "serde",
@@ -3358,31 +3306,6 @@ dependencies = [
 
 [[package]]
 name = "midnight-onchain-runtime"
-version = "3.1.1"
-source = "git+https://github.com/MediaNoxLabs/midnight-ledger.git?rev=8655615e7c4cbf3a1187b3203bf72e69dc09b8dc#8655615e7c4cbf3a1187b3203bf72e69dc09b8dc"
-dependencies = [
- "derive-where",
- "enum_index",
- "enum_index_derive",
- "fake",
- "hex",
- "konst 0.4.3",
- "lazy_static",
- "midnight-base-crypto 1.0.1",
- "midnight-coin-structure 2.0.2",
- "midnight-onchain-state 3.0.1",
- "midnight-onchain-vm 3.1.1",
- "midnight-serialize 1.1.1",
- "midnight-storage 2.0.3",
- "midnight-transient-crypto 2.1.1",
- "rand 0.8.6",
- "serde",
- "serde_bytes",
- "tracing",
-]
-
-[[package]]
-name = "midnight-onchain-runtime"
 version = "4.0.1"
 source = "git+https://github.com/betsudo/midnight-ledger?rev=6fbc2e3900845a858f70eebf8a0deab1d4d3c0d6#6fbc2e3900845a858f70eebf8a0deab1d4d3c0d6"
 dependencies = [
@@ -3394,11 +3317,11 @@ dependencies = [
  "konst 0.4.3",
  "lazy_static",
  "midnight-base-crypto 1.1.1",
- "midnight-coin-structure 3.0.1",
- "midnight-onchain-state 4.0.1",
- "midnight-onchain-vm 4.0.1",
+ "midnight-coin-structure",
+ "midnight-onchain-state",
+ "midnight-onchain-vm",
  "midnight-serialize 1.2.1",
- "midnight-storage 3.1.0",
+ "midnight-storage",
  "midnight-transient-crypto 3.1.0",
  "rand 0.8.6",
  "serde",
@@ -3408,24 +3331,6 @@ dependencies = [
 
 [[package]]
 name = "midnight-onchain-state"
-version = "3.0.1"
-source = "git+https://github.com/MediaNoxLabs/midnight-ledger.git?rev=8655615e7c4cbf3a1187b3203bf72e69dc09b8dc#8655615e7c4cbf3a1187b3203bf72e69dc09b8dc"
-dependencies = [
- "derive-where",
- "fake",
- "hex",
- "midnight-base-crypto 1.0.1",
- "midnight-coin-structure 2.0.2",
- "midnight-serialize 1.1.1",
- "midnight-storage 2.0.3",
- "midnight-transient-crypto 2.1.1",
- "rand 0.8.6",
- "serde",
- "serde_bytes",
-]
-
-[[package]]
-name = "midnight-onchain-state"
 version = "4.0.1"
 source = "git+https://github.com/betsudo/midnight-ledger?rev=6fbc2e3900845a858f70eebf8a0deab1d4d3c0d6#6fbc2e3900845a858f70eebf8a0deab1d4d3c0d6"
 dependencies = [
@@ -3433,9 +3338,9 @@ dependencies = [
  "fake",
  "hex",
  "midnight-base-crypto 1.1.1",
- "midnight-coin-structure 3.0.1",
+ "midnight-coin-structure",
  "midnight-serialize 1.2.1",
- "midnight-storage 3.1.0",
+ "midnight-storage",
  "midnight-transient-crypto 2.2.0",
  "midnight-transient-crypto 3.1.0",
  "rand 0.8.6",
@@ -3445,27 +3350,6 @@ dependencies = [
 
 [[package]]
 name = "midnight-onchain-vm"
-version = "3.1.1"
-source = "git+https://github.com/MediaNoxLabs/midnight-ledger.git?rev=8655615e7c4cbf3a1187b3203bf72e69dc09b8dc#8655615e7c4cbf3a1187b3203bf72e69dc09b8dc"
-dependencies = [
- "derive-where",
- "fake",
- "hex",
- "konst 0.4.3",
- "midnight-base-crypto 1.0.1",
- "midnight-coin-structure 2.0.2",
- "midnight-onchain-state 3.0.1",
- "midnight-serialize 1.1.1",
- "midnight-storage 2.0.3",
- "midnight-transient-crypto 2.1.1",
- "rand 0.8.6",
- "rpds",
- "serde",
- "serde_bytes",
-]
-
-[[package]]
-name = "midnight-onchain-vm"
 version = "4.0.1"
 source = "git+https://github.com/betsudo/midnight-ledger?rev=6fbc2e3900845a858f70eebf8a0deab1d4d3c0d6#6fbc2e3900845a858f70eebf8a0deab1d4d3c0d6"
 dependencies = [
@@ -3474,10 +3358,10 @@ dependencies = [
  "hex",
  "konst 0.4.3",
  "midnight-base-crypto 1.1.1",
- "midnight-coin-structure 3.0.1",
- "midnight-onchain-state 4.0.1",
+ "midnight-coin-structure",
+ "midnight-onchain-state",
  "midnight-serialize 1.2.1",
- "midnight-storage 3.1.0",
+ "midnight-storage",
  "midnight-transient-crypto 3.1.0",
  "rand 0.8.6",
  "rpds",
@@ -3610,24 +3494,6 @@ dependencies = [
  "proc-macro2",
  "quote 1.0.47",
  "syn 2.0.119",
-]
-
-[[package]]
-name = "midnight-storage"
-version = "2.0.3"
-source = "git+https://github.com/MediaNoxLabs/midnight-ledger.git?rev=8655615e7c4cbf3a1187b3203bf72e69dc09b8dc#8655615e7c4cbf3a1187b3203bf72e69dc09b8dc"
-dependencies = [
- "crypto",
- "derive-where",
- "digest 0.11.3",
- "midnight-base-crypto 1.0.1",
- "midnight-serialize 1.1.1",
- "midnight-storage-core 1.2.1",
- "parking_lot",
- "rand 0.8.6",
- "serde",
- "sha2 0.11.0",
- "tempfile",
 ]
 
 [[package]]
@@ -3848,6 +3714,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "midnight-vc-did-binding"
+version = "0.5.0"
+dependencies = [
+ "identus-crypto",
+ "midnight-base-crypto 1.1.1",
+ "midnight-compact-runtime",
+ "midnight-did-domain",
+ "midnight-did-method",
+ "midnight-onchain-runtime",
+ "midnight-serialize 1.2.1",
+ "midnight-transient-crypto 3.1.0",
+ "serde_json",
+ "thiserror 2.0.21",
+]
+
+[[package]]
 name = "midnight-vc-domain"
 version = "0.5.0"
 dependencies = [
@@ -3861,10 +3743,10 @@ name = "midnight-vc-families"
 version = "0.5.0"
 dependencies = [
  "hex",
- "midnight-base-crypto 1.0.1",
- "midnight-compact-runtime 0.16.102",
- "midnight-onchain-runtime 3.1.1",
- "midnight-serialize 1.1.1",
+ "midnight-base-crypto 1.1.1",
+ "midnight-compact-runtime",
+ "midnight-onchain-runtime",
+ "midnight-serialize 1.2.1",
  "serde_json",
  "sha2 0.10.9",
 ]
@@ -3875,7 +3757,7 @@ version = "0.5.0"
 dependencies = [
  "base64 0.22.1",
  "midnight-did-jubjub-schnorr",
- "midnight-transient-crypto 2.1.1",
+ "midnight-transient-crypto 3.1.0",
  "midnight-vc-families",
  "midnight-vc-runtime",
  "rand 0.8.6",
@@ -3886,10 +3768,10 @@ dependencies = [
 name = "midnight-vc-runtime"
 version = "0.5.0"
 dependencies = [
- "midnight-base-crypto 1.0.1",
- "midnight-compact-runtime 0.16.102",
- "midnight-onchain-runtime 3.1.1",
- "midnight-serialize 1.1.1",
+ "midnight-base-crypto 1.1.1",
+ "midnight-compact-runtime",
+ "midnight-onchain-runtime",
+ "midnight-serialize 1.2.1",
 ]
 
 [[package]]
@@ -3999,30 +3881,6 @@ dependencies = [
 
 [[package]]
 name = "midnight-zswap"
-version = "8.2.0-rc.1"
-source = "git+https://github.com/MediaNoxLabs/midnight-ledger.git?rev=8655615e7c4cbf3a1187b3203bf72e69dc09b8dc#8655615e7c4cbf3a1187b3203bf72e69dc09b8dc"
-dependencies = [
- "derive-where",
- "fake",
- "futures",
- "is_sorted",
- "itertools",
- "lazy_static",
- "midnight-base-crypto 1.0.1",
- "midnight-coin-structure 2.0.2",
- "midnight-ledger-static 9.0.0",
- "midnight-onchain-runtime 3.1.1",
- "midnight-serialize 1.1.1",
- "midnight-storage 2.0.3",
- "midnight-transient-crypto 2.1.1",
- "rand 0.8.6",
- "serde",
- "tracing",
- "zeroize",
-]
-
-[[package]]
-name = "midnight-zswap"
 version = "9.0.1"
 source = "git+https://github.com/betsudo/midnight-ledger?rev=6fbc2e3900845a858f70eebf8a0deab1d4d3c0d6#6fbc2e3900845a858f70eebf8a0deab1d4d3c0d6"
 dependencies = [
@@ -4034,11 +3892,11 @@ dependencies = [
  "itertools",
  "lazy_static",
  "midnight-base-crypto 1.1.1",
- "midnight-coin-structure 3.0.1",
- "midnight-ledger-static 10.0.0",
- "midnight-onchain-runtime 4.0.1",
+ "midnight-coin-structure",
+ "midnight-ledger-static",
+ "midnight-onchain-runtime",
  "midnight-serialize 1.2.1",
- "midnight-storage 3.1.0",
+ "midnight-storage",
  "midnight-transient-crypto 2.2.0",
  "midnight-transient-crypto 3.1.0",
  "midnight-zkir 2.2.0",

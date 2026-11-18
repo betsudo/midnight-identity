@@ -27,8 +27,8 @@
       rev   = "532629b044a88473a7175f4a96c2511c91156136";
       flake = false;
     };
-    # Canonical patched Ledger 9.1.0.2 source used by the DID runtime and its
-    # Compact runtime. VC/Passport retain the separate Ledger 8 input above.
+    # Canonical patched Ledger 9.1.0.2 source used by the DID and VC runtimes.
+    # Passport Account/Vault evidence retains the separate Ledger 8 input above.
     midnight-ledger-v9 = {
       type  = "github";
       owner = "betsudo";
@@ -40,8 +40,7 @@
       type  = "github";
       owner = "MediaNoxLabs";
       repo  = "compact";
-      # Authenticated compiler/toolchain revision used by generated VC and
-      # Passport artifacts. Runtime upgrades must not rewrite that provenance.
+      # Retained Ledger 8 compiler/toolchain for Passport Account/Vault evidence.
       rev   = "55ba765f5484a47d9184824a619f93893448c740";
       inputs.nixpkgs.url = "github:NixOS/nixpkgs/bcc4a9d9533c033d806a46b37dc444f9b0da49dd";
     };
@@ -66,8 +65,8 @@
       type  = "github";
       owner = "betsudo";
       repo  = "compact";
-      # DID-only Rust AST compiler. Keep the existing `compact` input for
-      # VC/Passport generation until those packages publish Ledger 9 artifacts.
+      # Rust AST compiler used by DID, VC Core, DID binding, and DigitalPassport
+      # compatibility generation.
       rev   = "d6513a24debac14d43a8199460d9dc2c6d9af2b1";
     };
   };

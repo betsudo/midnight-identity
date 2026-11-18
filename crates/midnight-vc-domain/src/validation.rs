@@ -37,7 +37,8 @@ use std::collections::HashSet;
 
 use crate::errors::{CredentialModelError, CredentialModelErrorCode};
 use crate::types::{
-    CredentialCompositionManifest, CredentialFamilyDefinition, CredentialPackageRequirement, CredentialSchemaDescriptor,
+    CredentialCompositionManifest, CredentialFamilyDefinition, CredentialPackageRequirement,
+    CredentialSchemaDefinition, CredentialSchemaDescriptor,
 };
 
 // ---------------------------------------------------------------------------
@@ -207,6 +208,62 @@ fn assert_codec(descriptor: &crate::types::CodecDescriptor, name: &str) -> Resul
 // ---------------------------------------------------------------------------
 // Public validators
 // ---------------------------------------------------------------------------
+
+/// Validate the VC Core 1.0 schema definition with the same ordering and
+/// refusal rules as `assertCredentialSchemaDefinition`.
+pub fn assert_credential_schema_definition(
+    definition: &CredentialSchemaDefinition,
+) -> Result<(), CredentialModelError> {
+    assert_identifier(&definition.id, "id")?;
+    assert_version(&definition.version, "version")?;
+    for (field, value) in [("name", &definition.name), ("description", &definition.description)] {
+        if value
+            .as_deref()
+            .is_some_and(|value| value.is_empty() || value.trim() != value)
+        {
+            return Err(invalid(
+                CredentialModelErrorCode::InvalidDescriptor,
+                field,
+                "must be a non-empty trimmed string when present",
+            ));
+        }
+    }
+    if definition.credential_types.is_empty() {
+        return Err(invalid(
+            CredentialModelErrorCode::InvalidDescriptor,
+            "credentialTypes",
+            "must contain at least one credential type",
+        ));
+    }
+    for (index, credential_type) in definition.credential_types.iter().enumerate() {
+        assert_identifier(credential_type, format!("credentialTypes[{index}]"))?;
+    }
+    assert_unique_ids(definition.claims.iter().map(|claim| claim.id.as_str()), "claims")?;
+    for (index, claim) in definition.claims.iter().enumerate() {
+        if let Some(value_type) = &claim.value_type {
+            assert_identifier(value_type, format!("claims[{index}].valueType"))?;
+        }
+        if claim.path.is_empty() {
+            return Err(invalid(
+                CredentialModelErrorCode::InvalidDescriptor,
+                format!("claims[{index}].path"),
+                "must contain at least one path segment",
+            ));
+        }
+        for (path_index, segment) in claim.path.iter().enumerate() {
+            assert_identifier(segment, format!("claims[{index}].path[{path_index}]"))?;
+        }
+    }
+    Ok(())
+}
+
+/// Validate and return a VC Core 1.0 schema definition.
+pub fn define_credential_schema(
+    definition: CredentialSchemaDefinition,
+) -> Result<CredentialSchemaDefinition, CredentialModelError> {
+    assert_credential_schema_definition(&definition)?;
+    Ok(definition)
+}
 
 /// TS `assertCredentialCompositionManifest`.
 ///
@@ -507,6 +564,25 @@ mod tests {
             required: true,
             value_type: None,
         }
+    }
+
+    #[test]
+    fn vc_core_1_schema_accepts_valid_definition_and_refuses_duplicate_claims() {
+        let schema = CredentialSchemaDefinition {
+            id: "digital-passport".into(),
+            version: "1.0.0-rc1".into(),
+            name: Some("Digital Passport".into()),
+            description: None,
+            credential_types: vec!["DigitalPassportCredential".into()],
+            claims: vec![claim("givenName"), claim("documentNumber")],
+        };
+        assert_eq!(define_credential_schema(schema.clone()).unwrap(), schema);
+
+        let mut duplicate = schema;
+        duplicate.claims[1].id = "givenName".into();
+        let error = assert_credential_schema_definition(&duplicate).unwrap_err();
+        assert_eq!(error.code, CredentialModelErrorCode::DuplicateId);
+        assert_eq!(error.path, "claims[1].id");
     }
 
     fn manifest() -> CredentialCompositionManifest {

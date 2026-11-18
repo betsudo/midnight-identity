@@ -46,9 +46,16 @@
 
 #![forbid(unsafe_code)]
 #![warn(missing_docs, rust_2018_idioms, clippy::all)]
+#![allow(missing_docs)] // generated crate-root items carry upstream names
 
 /// Crate version reported by the build.
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
+
+// See midnight-vc-runtime: the Ledger 9 Rust AST backend emits crate-root
+// paths. Each family remains feature-gated and the handwritten contract module
+// preserves the public `contract::digital_passport::*` namespace.
+#[cfg(feature = "digital-passport")]
+include!("contract/digital_passport.rs");
 
 pub mod contract;
 

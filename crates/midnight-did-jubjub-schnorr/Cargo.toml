@@ -17,7 +17,7 @@ publish = false
 
 [dependencies]
 hex                       = { workspace = true }
-midnight-transient-crypto = { workspace = true }
+midnight-transient-crypto = { version = "=3.1.0", git = "https://github.com/betsudo/midnight-ledger", rev = "6fbc2e3900845a858f70eebf8a0deab1d4d3c0d6" }
 rand                      = "0.8"
 sha2                      = "0.10"
 thiserror                 = "2"
