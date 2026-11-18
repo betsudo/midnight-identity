@@ -59,6 +59,9 @@ pub enum BindingError {
     /// Requested method is absent.
     #[error("verification method is absent from the DID document")]
     MethodMissing,
+    /// Method fragment is not a non-empty canonical `#fragment`.
+    #[error("Midnight DID method identifier must be a non-empty canonical fragment")]
+    InvalidMethodId,
     /// Method is not authorized for the requested relationship.
     #[error("verification method is not authorized for the requested relationship")]
     RelationshipMissing,
@@ -74,9 +77,11 @@ pub enum BindingError {
 ///
 /// This intentionally does not reuse the older off-chain holder-binding
 /// domain tag: the 1.0 upstream adapter specifies `sha256(UTF8(fragment))`.
-#[must_use]
-pub fn midnight_did_method_id(canonical_fragment: &str) -> [u8; 32] {
-    *identus_crypto::hash::sha256(canonical_fragment.as_bytes()).as_array()
+pub fn midnight_did_method_id(canonical_fragment: &str) -> Result<[u8; 32], BindingError> {
+    if !canonical_fragment.starts_with('#') || canonical_fragment.len() == 1 || canonical_fragment[1..].contains('#') {
+        return Err(BindingError::InvalidMethodId);
+    }
+    Ok(*identus_crypto::hash::sha256(canonical_fragment.as_bytes()).as_array())
 }
 
 /// Resolve a native Jubjub method from an already obtained DID resolution result.
@@ -101,13 +106,6 @@ pub fn resolve_midnight_did_method_binding(
     if result.did_document_metadata.deactivated == Some(true) {
         return Err(BindingError::Deactivated);
     }
-    let version = result
-        .did_document_metadata
-        .version_id
-        .as_deref()
-        .and_then(|value| value.parse::<u64>().ok())
-        .filter(|value| *value > 0)
-        .ok_or(BindingError::InvalidStateVersion)?;
     let fragment = normalize_bound_fragment_id(verification_method_id, BoundIdField::VerificationMethodId, did)
         .map_err(|_| BindingError::MethodMissing)?;
     let method = document
@@ -143,9 +141,18 @@ pub fn resolve_midnight_did_method_binding(
     let x = decode_jubjub_jwk_coordinate(jwk.x(), "publicKeyJwk.x").map_err(|_| BindingError::InvalidCoordinates)?;
     let y = decode_jubjub_jwk_coordinate(jwk.y().ok_or(BindingError::InvalidMethodProfile)?, "publicKeyJwk.y")
         .map_err(|_| BindingError::InvalidCoordinates)?;
+    // Match the upstream adapter's refusal order: method/profile/relationship
+    // validation precedes the observed state-version check.
+    let version = result
+        .did_document_metadata
+        .version_id
+        .as_deref()
+        .and_then(|value| value.parse::<u64>().ok())
+        .filter(|value| *value > 0)
+        .ok_or(BindingError::InvalidStateVersion)?;
     Ok(MidnightDidMethodBinding {
         controller_address: address.0,
-        method_id: midnight_did_method_id(&fragment),
+        method_id: midnight_did_method_id(&fragment)?,
         public_key_x: x,
         public_key_y: y,
         did_state_version: version,
@@ -216,7 +223,7 @@ mod tests {
         .unwrap();
         assert_eq!(binding.controller_address, [0x11; 32]);
         assert_eq!(binding.did_state_version, 12);
-        assert_eq!(binding.method_id, midnight_did_method_id("#issuer-key"));
+        assert_eq!(binding.method_id, midnight_did_method_id("#issuer-key").unwrap());
         assert_eq!(
             create_midnight_did_holder_binding(binding).unwrap_err(),
             BindingError::RelationshipMissing,
@@ -282,6 +289,20 @@ mod tests {
             )
             .unwrap_err(),
             BindingError::SubjectMismatch,
+        );
+    }
+
+    #[test]
+    fn method_identifier_refuses_noncanonical_fragments() {
+        for invalid in ["", "issuer-key", "#", "#issuer#key"] {
+            assert_eq!(
+                midnight_did_method_id(invalid).unwrap_err(),
+                BindingError::InvalidMethodId
+            );
+        }
+        assert_eq!(
+            midnight_did_method_id("#issuer-key").unwrap(),
+            midnight_did_method_id("#issuer-key").unwrap(),
         );
     }
 
