@@ -34,14 +34,15 @@
 //!
 //! ## Upstream provenance
 //!
-//! The TypeScript packages ported here (`packages/core/model`,
-//! `packages/core/status`) follow
+//! The VC Core 1.0 schema surface follows
 //! [`midnightntwrk/midnight-verifiable-credentials`](https://github.com/midnightntwrk/midnight-verifiable-credentials)
-//! `main` rev `b8646e2`:
+//! tag `v1.0.0-rc1`, commit `62b21892652957d681cd3d11d1d3c0ade502d98e`.
+//! The richer family/status vocabulary predates that narrowed release and is
+//! retained as a compatibility layer; live status evaluation remains external.
 //!
 //! ```text
 //! git -C <midnight-verifiable-credentials checkout> show \
-//!     b8646e2:packages/core/model/src/types.ts
+//!     62b2189:packages/core/model/src/types.ts
 //! ```
 //!
 //! The generated Compact bindings no longer come from that repository's
@@ -79,10 +80,10 @@ pub use status::{
 pub use types::{
     ClaimDisclosure, CodecDescriptor, CredentialCapabilityDescriptor, CredentialCapabilityKind,
     CredentialClaimDescriptor, CredentialCodec, CredentialCompositionManifest, CredentialFamilyDefinition,
-    CredentialPackageRequirement, CredentialSchemaDescriptor, PresentationCodec, ProofArtifactPurpose,
-    ProofArtifactRequirement,
+    CredentialPackageRequirement, CredentialSchemaDefinition, CredentialSchemaDescriptor, PresentationCodec,
+    ProofArtifactPurpose, ProofArtifactRequirement,
 };
 pub use validation::{
-    assert_credential_composition_manifest, assert_credential_family_definition, define_credential_family,
-    is_package_name, is_package_version, is_semantic_version,
+    assert_credential_composition_manifest, assert_credential_family_definition, assert_credential_schema_definition,
+    define_credential_family, define_credential_schema, is_package_name, is_package_version, is_semantic_version,
 };

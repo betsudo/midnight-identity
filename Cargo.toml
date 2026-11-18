@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members  = [ "crates/midnight-did", "crates/midnight-did-api", "crates/midnight-did-cli", "crates/midnight-did-domain", "crates/midnight-did-indexer", "crates/midnight-did-jubjub-schnorr", "crates/midnight-did-method", "crates/midnight-did-resolver", "crates/midnight-did-runtime", "crates/midnight-did-uniffi", "crates/midnight-passport-account-source", "crates/midnight-passport-account", "crates/midnight-passport-vault-source", "crates/midnight-vc-domain", "crates/midnight-vc-families", "crates/midnight-vc-proof", "crates/midnight-vc-runtime" ]
+members  = [ "crates/midnight-did", "crates/midnight-did-api", "crates/midnight-did-cli", "crates/midnight-did-domain", "crates/midnight-did-indexer", "crates/midnight-did-jubjub-schnorr", "crates/midnight-did-method", "crates/midnight-did-resolver", "crates/midnight-did-runtime", "crates/midnight-did-uniffi", "crates/midnight-passport-account-source", "crates/midnight-passport-account", "crates/midnight-passport-vault-source", "crates/midnight-vc-did-binding", "crates/midnight-vc-domain", "crates/midnight-vc-families", "crates/midnight-vc-proof", "crates/midnight-vc-runtime" ]
 exclude  = [ "third_party/midnight-ledger" ]
 
 [workspace.package]
@@ -16,9 +16,9 @@ repository   = "https://github.com/MediaNoxLabs/midnight-identity"
 # version exact and its feature cone minimal; Midnight-specific semantics remain
 # in this workspace (ADR 0011).
 identus-crypto = { version = "=0.1.0-rc.1", default-features = false, features = [ "hash" ] }
-# Keep the shared names on the Ledger 8 cone because VC and Passport are out
-# of scope for this migration. The DID runtime declares its exact Ledger 9
-# cohort locally so the two product surfaces cannot be silently conflated.
+# Keep the shared names on the Ledger 8 cone for the independently versioned
+# Passport Account/Vault evidence leaves. DID and VC declare their exact
+# Ledger 9 cohorts locally so those surfaces cannot be silently conflated.
 midnight-base-crypto      = { git = "https://github.com/MediaNoxLabs/midnight-ledger.git", rev = "8655615e7c4cbf3a1187b3203bf72e69dc09b8dc" }
 midnight-coin-structure   = { git = "https://github.com/MediaNoxLabs/midnight-ledger.git", rev = "8655615e7c4cbf3a1187b3203bf72e69dc09b8dc" }
 midnight-onchain-runtime  = { git = "https://github.com/MediaNoxLabs/midnight-ledger.git", rev = "8655615e7c4cbf3a1187b3203bf72e69dc09b8dc" }
@@ -31,8 +31,8 @@ midnight-zkir             = { git = "https://github.com/MediaNoxLabs/midnight-le
 midnight-zswap            = { git = "https://github.com/MediaNoxLabs/midnight-ledger.git", rev = "8655615e7c4cbf3a1187b3203bf72e69dc09b8dc" }
 midnight-ledger           = { git = "https://github.com/MediaNoxLabs/midnight-ledger.git", rev = "8655615e7c4cbf3a1187b3203bf72e69dc09b8dc" }
 compact-runtime           = { package = "midnight-compact-runtime", git = "https://github.com/MediaNoxLabs/compact.git", rev = "32e314770da10cc62dab30dcfeb340ec4c6bcb64" }
-# VC and Passport generated sources import this dependency name directly, so it
-# remains on their existing runtime revision. DID pins Runtime 0.2.0 locally.
+# Passport Account/Vault retains this runtime. DID and VC generated crates pin
+# the Ledger 9 Rust AST runtime locally.
 midnight-compact-runtime = { package = "midnight-compact-runtime", git = "https://github.com/MediaNoxLabs/compact.git", rev = "32e314770da10cc62dab30dcfeb340ec4c6bcb64" }
 # common
 serde      = { version = "1", features = [ "derive" ] }
@@ -59,6 +59,7 @@ midnight-did = { path = "crates/midnight-did", version = "=0.5.0" }
 # cadence (hence the `=` version pin, same rationale as midnight-did-domain);
 # `vc-runtime` is the codegen target and stays unpublished.
 midnight-vc-domain               = { path = "crates/midnight-vc-domain", version = "=0.5.0" }
+midnight-vc-did-binding          = { path = "crates/midnight-vc-did-binding" }
 midnight-vc-families             = { path = "crates/midnight-vc-families" }
 midnight-vc-proof                = { path = "crates/midnight-vc-proof" }
 midnight-vc-runtime              = { path = "crates/midnight-vc-runtime" }
@@ -70,10 +71,10 @@ midnight-passport-vault-source   = { path = "crates/midnight-passport-vault-sour
 # proofs fork. Ledger 9 keeps only its Ledger and ZKIR source selectors here;
 # the patch-free ZK graph resolves its 0.8.x proof cohort without root patches.
 [patch.crates-io]
-midnight-proofs-ledger8 = { package = "midnight-proofs", git = "https://github.com/MediaNoxLabs/midnight-zk.git", rev = "532629b044a88473a7175f4a96c2511c91156136" }
-midnight-zkir-ledger9 = { package = "midnight-zkir", version = "=3.2.1", git = "https://github.com/betsudo/midnight-zkir", rev = "3377ad9e48741f60e0aa17010b6f23e34223d906" }
-midnight-base-crypto-ledger9 = { package = "midnight-base-crypto", version = "=1.1.1", git = "https://github.com/betsudo/midnight-ledger", rev = "6fbc2e3900845a858f70eebf8a0deab1d4d3c0d6" }
-midnight-serialize-ledger9 = { package = "midnight-serialize", version = "=1.2.1", git = "https://github.com/betsudo/midnight-ledger", rev = "6fbc2e3900845a858f70eebf8a0deab1d4d3c0d6" }
+midnight-proofs-ledger8           = { package = "midnight-proofs", git = "https://github.com/MediaNoxLabs/midnight-zk.git", rev = "532629b044a88473a7175f4a96c2511c91156136" }
+midnight-zkir-ledger9             = { package = "midnight-zkir", version = "=3.2.1", git = "https://github.com/betsudo/midnight-zkir", rev = "3377ad9e48741f60e0aa17010b6f23e34223d906" }
+midnight-base-crypto-ledger9      = { package = "midnight-base-crypto", version = "=1.1.1", git = "https://github.com/betsudo/midnight-ledger", rev = "6fbc2e3900845a858f70eebf8a0deab1d4d3c0d6" }
+midnight-serialize-ledger9        = { package = "midnight-serialize", version = "=1.2.1", git = "https://github.com/betsudo/midnight-ledger", rev = "6fbc2e3900845a858f70eebf8a0deab1d4d3c0d6" }
 midnight-transient-crypto-ledger9 = { package = "midnight-transient-crypto", version = "=3.1.0", git = "https://github.com/betsudo/midnight-ledger", rev = "6fbc2e3900845a858f70eebf8a0deab1d4d3c0d6" }
 
 [profile.dev]

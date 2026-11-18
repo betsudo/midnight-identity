@@ -18,14 +18,12 @@ name = "midnight_vc_runtime"
 path = "src/lib.rs"
 
 [dependencies]
-# The runtime the generated circuits call into. Its immutable Git revision is
-# declared at the workspace root; Nix path substitution is opt-in.
-midnight-compact-runtime = { workspace = true }
-
-# Ledger crates the generated code needs at link time (transitively via
-# midnight-compact-runtime). The root manifest keeps them on one Git source.
-midnight-base-crypto     = { workspace = true }
-midnight-onchain-runtime = { workspace = true }
-midnight-serialize       = { workspace = true }
+# VC Core 1.0.0-rc1 is a Ledger 9 artifact. Keep the complete generated-code
+# cone on the same immutable cohort as DID without changing the Ledger 8
+# workspace aliases retained by Passport Vault.
+midnight-compact-runtime = { package = "midnight-compact-runtime", git = "https://github.com/betsudo/compact", rev = "d6513a24debac14d43a8199460d9dc2c6d9af2b1", features = [ "experimental-functional" ] }
+midnight-base-crypto     = { version = "=1.1.1", git = "https://github.com/betsudo/midnight-ledger", rev = "6fbc2e3900845a858f70eebf8a0deab1d4d3c0d6" }
+midnight-onchain-runtime = { version = "=4.0.1", git = "https://github.com/betsudo/midnight-ledger", rev = "6fbc2e3900845a858f70eebf8a0deab1d4d3c0d6" }
+midnight-serialize       = { version = "=1.2.1", git = "https://github.com/betsudo/midnight-ledger", rev = "6fbc2e3900845a858f70eebf8a0deab1d4d3c0d6" }
 
 [dev-dependencies]

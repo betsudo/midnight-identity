@@ -22,9 +22,10 @@ Verifiable Credentials and a standalone DID resolver service — tracked
 in the [issue backlog](https://github.com/MediaNoxLabs/midnight-identity/issues).
 
 **The Verifiable Credentials track has started** (issue #13): the
-credential model and the generated bindings for the Midnight VC
-Compact contracts now ship as `midnight-vc-domain`, `midnight-vc-runtime`,
-and the opt-in `midnight-vc-families` bindings.
+credential model, native DID binding, proof helpers, and generated bindings for
+the Midnight VC Compact contracts now ship as `midnight-vc-domain`,
+`midnight-vc-did-binding`, `midnight-vc-proof`, `midnight-vc-runtime`, and the
+opt-in `midnight-vc-families` bindings.
 
 ## What's here
 
@@ -40,8 +41,10 @@ and the opt-in `midnight-vc-families` bindings.
 | `midnight-did-uniffi` | Swift / Kotlin / Python bindings (UniFFI) | no (by design) |
 | `midnight-did-cli` | Reference CLI demo | no (by design) |
 | `midnight-vc-domain` | Pure-data VC credential model: schema/claim descriptors, composition manifests, status vocabulary (zero `midnight-*` deps, wasm-clean) | yes |
+| `midnight-vc-did-binding` | Ledger-neutral resolver adapter plus generated Ledger 9 `did:midnight` VC-binding circuits | no (`publish = false`)² |
 | `midnight-vc-runtime` | `compactc --rust` codegen target for the VC Core `credentials` contract (`@midnight-ntwrk/credential-compact`) | no (`publish = false`)² |
 | `midnight-vc-families` | Feature-gated generated bindings for credential families (`digital-passport` today) | no (`publish = false`)² |
+| `midnight-vc-proof` | Issuance signing, bounded detached-proof parsing, and authenticated DigitalPassport verification | no (`publish = false`)² |
 | `midnight-passport-account-source` | Authenticated Passport account-custody Compact source and Ledger 9.1 compatibility descriptor (no runtime dependencies) | not in release workflow |
 | `midnight-passport-account` | Platform-neutral Passport account-custody signer, scoped-grant, InboxEntry, coin-store, and discovery primitives | blocked¹ |
 | `midnight-passport-vault-source` | Authenticated Passport Vault Compact source, provenance, and circuit baselines (no runtime dependencies) | yes |
@@ -196,4 +199,7 @@ FlakeHub account.
   — Compact-first VC stack; the model for the planned shared SSI crates.
 - [midnightntwrk/midnight-vc-passport](https://github.com/midnightntwrk/midnight-vc-passport)
   — Digital Passport credential family; the `@midnight-ntwrk/midnight-vc-passport`
-  npm package is the source of the `midnight-vc-families` `digital-passport` bindings.
+  npm package is the source of the `midnight-vc-families` `digital-passport`
+  bindings. Its rc5 source is compiled here as an explicitly qualified
+  compatibility overlay on VC Core 1.0.0-rc1; upstream has not published a
+  Ledger 9 Passport release.

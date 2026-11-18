@@ -16,7 +16,7 @@ publish                = false
 
 [dependencies]
 midnight-did-jubjub-schnorr = { workspace = true }
-midnight-transient-crypto   = { workspace = true }
+midnight-transient-crypto   = { version = "=3.1.0", git = "https://github.com/betsudo/midnight-ledger", rev = "6fbc2e3900845a858f70eebf8a0deab1d4d3c0d6" }
 midnight-vc-families        = { workspace = true, features = [ "digital-passport" ] }
 midnight-vc-runtime         = { workspace = true }
 rand                        = "0.8"

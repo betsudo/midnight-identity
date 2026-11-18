@@ -42,4 +42,27 @@
 #![allow(missing_docs)] // generated modules carry their own header docs
 
 #[cfg(feature = "digital-passport")]
-pub mod digital_passport;
+/// Compatibility namespace for the generated DigitalPassport surface.
+pub mod digital_passport {
+    pub use crate::runtime;
+    pub use crate::types::*;
+
+    /// Backwards-compatible snake-case names around Ledger 9 generated calls.
+    pub mod pure_circuits {
+        pub use crate::pure_circuits::*;
+        pub use crate::pure_circuits::{
+            assertValidDigitalPassportAgePredicate as assert_valid_digital_passport_age_predicate,
+            assertValidDigitalPassportCredential as assert_valid_digital_passport_credential,
+            assertValidDigitalPassportPresentation as assert_valid_digital_passport_presentation,
+            assertValidIssuanceContextProof as assert_valid_issuance_context_proof,
+            dateOfBirthCommitment as date_of_birth_commitment, digitalPassportClaimRoot as digital_passport_claim_root,
+            digitalPassportCredentialBodyRoot as digital_passport_credential_body_root,
+            digitalPassportPresentationBodyRoot as digital_passport_presentation_body_root,
+            documentNumberCommitment as document_number_commitment,
+            documentNumberNullCommitment as document_number_null_commitment,
+            firstNameCommitment as first_name_commitment, issuanceProofChallenge as issuance_proof_challenge,
+            issuingStateCommitment as issuing_state_commitment, lastNameCommitment as last_name_commitment,
+            presentationProofChallenge as presentation_proof_challenge,
+        };
+    }
+}

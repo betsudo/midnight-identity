@@ -1,0 +1,24 @@
+[package]
+name                   = "midnight-vc-did-binding"
+version.workspace      = true
+edition.workspace      = true
+rust-version.workspace = true
+license.workspace      = true
+authors.workspace      = true
+repository.workspace   = true
+description            = "Native Rust did:midnight binding adapter for Midnight VC Core 1.0 on Ledger 9."
+publish                = false
+
+[dependencies]
+identus-crypto            = { workspace = true }
+midnight-did-domain       = { workspace = true }
+midnight-did-method       = { workspace = true }
+midnight-compact-runtime  = { package = "midnight-compact-runtime", git = "https://github.com/betsudo/compact", rev = "d6513a24debac14d43a8199460d9dc2c6d9af2b1", features = [ "experimental-functional" ] }
+midnight-base-crypto      = { version = "=1.1.1", git = "https://github.com/betsudo/midnight-ledger", rev = "6fbc2e3900845a858f70eebf8a0deab1d4d3c0d6" }
+midnight-onchain-runtime  = { version = "=4.0.1", git = "https://github.com/betsudo/midnight-ledger", rev = "6fbc2e3900845a858f70eebf8a0deab1d4d3c0d6" }
+midnight-serialize        = { version = "=1.2.1", git = "https://github.com/betsudo/midnight-ledger", rev = "6fbc2e3900845a858f70eebf8a0deab1d4d3c0d6" }
+midnight-transient-crypto = { version = "=3.1.0", git = "https://github.com/betsudo/midnight-ledger", rev = "6fbc2e3900845a858f70eebf8a0deab1d4d3c0d6" }
+thiserror                 = "2"
+
+[dev-dependencies]
+serde_json = { workspace = true }

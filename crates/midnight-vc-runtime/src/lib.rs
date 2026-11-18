@@ -30,18 +30,84 @@
 
 #![forbid(unsafe_code)]
 #![warn(missing_docs, rust_2018_idioms, clippy::all)]
+#![allow(missing_docs)] // generated crate-root items carry upstream names
 
 /// Crate version reported by the build.
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
+
+// The Ledger 9 Rust AST backend emits absolute `crate::types` and
+// `crate::pure_circuits` references. Mount the generated unit at crate root,
+// then preserve the historical `contract::credentials::*` path with re-exports
+// in `contract/mod.rs`.
+include!("contract/credentials.rs");
 
 pub mod contract;
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::types::{
+        ContractAddress, ExplicitHolderBinding, RegistryBoundStatusBinding, StatusRegistryRef, VerificationMethodRef,
+    };
+
+    fn verification_method_ref(controller: u8, method: u8) -> VerificationMethodRef {
+        VerificationMethodRef {
+            controllerAddress: ContractAddress {
+                bytes: runtime::FixedBytes([controller; 32]),
+            },
+            methodId: runtime::FixedBytes([method; 32]),
+        }
+    }
 
     #[test]
     fn version_is_reported() {
         assert!(!VERSION.is_empty());
+    }
+
+    #[test]
+    fn explicit_holder_binding_requires_the_same_controller_and_method() {
+        let binding = ExplicitHolderBinding {
+            holderVerificationMethodRef: verification_method_ref(1, 2),
+        };
+        assert!(pure_circuits::assertValidExplicitHolderBinding(binding.clone()).is_ok());
+        assert!(pure_circuits::assertMatchingExplicitHolderBindings(binding.clone(), binding.clone()).is_ok());
+
+        let different_controller = ExplicitHolderBinding {
+            holderVerificationMethodRef: verification_method_ref(3, 2),
+        };
+        assert!(pure_circuits::assertMatchingExplicitHolderBindings(binding.clone(), different_controller).is_err());
+
+        let different_method = ExplicitHolderBinding {
+            holderVerificationMethodRef: verification_method_ref(1, 4),
+        };
+        assert!(pure_circuits::assertMatchingExplicitHolderBindings(binding, different_method).is_err());
+    }
+
+    #[test]
+    fn registry_status_binding_refuses_unset_ids_and_commits_every_field() {
+        let binding = RegistryBoundStatusBinding {
+            registryRef: StatusRegistryRef {
+                registryId: runtime::FixedBytes([5; 32]),
+                authorityVerificationMethodRef: verification_method_ref(6, 7),
+            },
+            statusHandleCommitment: runtime::FixedBytes([8; 32]),
+        };
+        let root = pure_circuits::registryBoundStatusBindingRoot(binding.clone()).unwrap();
+        assert_eq!(
+            root,
+            pure_circuits::registryBoundStatusBindingRoot(binding.clone()).unwrap()
+        );
+
+        let mut changed = binding.clone();
+        changed.statusHandleCommitment = runtime::FixedBytes([9; 32]);
+        assert_ne!(root, pure_circuits::registryBoundStatusBindingRoot(changed).unwrap());
+
+        let mut missing_registry = binding.clone();
+        missing_registry.registryRef.registryId = runtime::FixedBytes([0; 32]);
+        assert!(pure_circuits::assertValidRegistryBoundStatusBinding(missing_registry).is_err());
+
+        let mut missing_handle = binding;
+        missing_handle.statusHandleCommitment = runtime::FixedBytes([0; 32]);
+        assert!(pure_circuits::assertValidRegistryBoundStatusBinding(missing_handle).is_err());
     }
 }

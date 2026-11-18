@@ -24,10 +24,19 @@
 //! |---|---|
 //! | [`credentials`] | `dist/credentials.compact` in the `@midnight-ntwrk/credential-compact` npm package |
 //!
-//! VC Core 0.2.0 narrowed the upstream repository to the generic VC/VP core,
-//! so the `iso_registry`, `same_holder` and `revocation_registry` modules
-//! generated from the earlier monorepo pin were removed with it.
+//! VC Core 1.0.0-rc1 adds explicit holder/status bindings, signer
+//! authorization, and context-separated issuance/presentation proof circuits.
 
 #![allow(missing_docs)] // generated modules carry their own header docs
 
-pub mod credentials;
+/// Compatibility namespace for the generated VC Core surface.
+pub mod credentials {
+    pub use crate::runtime;
+    pub use crate::types::*;
+
+    /// Backwards-compatible snake-case names around Ledger 9 generated calls.
+    pub mod pure_circuits {
+        pub use crate::pure_circuits::issuanceProofChallenge as issuance_proof_challenge;
+        pub use crate::pure_circuits::*;
+    }
+}

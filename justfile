@@ -67,15 +67,17 @@ codegen-check:
 #
 # The family `include`s the core from `../core-compact-staging/`, so the recipe
 # stages the same pinned core copy there before invoking the compiler.
-vc_core_version := "0.2.0"
-vc_core_sha256 := "095b6056912059e5b281b39d2d133a1048d42b5a6104da4367951c2773d70c4f"
+vc_core_version := "1.0.0-rc1"
+vc_core_sha256 := "3aeb66d81540f31d957bcaa54eda1f2ae2aa024c8451b381fbca22d0c2bb61fe"
 vc_passport_version := "0.1.0-rc5"
 vc_passport_sha256 := "bfb6e0de4c56108e06edd9b700672fc44ac9aa44d688f5fcf82a457fae4e177d"
+vc_did_binding_version := "1.0.0-rc1"
+vc_did_binding_sha256 := "abfd6ff02fd6284a1c9aa4a5d6a6ae48e957b493d8da042775222d6d0ac9df28"
 
 codegen-vc:
     #!/usr/bin/env bash
     set -euo pipefail
-    mkdir -p target-gen crates/midnight-vc-runtime/src/contract crates/midnight-vc-families/src/contract
+    mkdir -p target-gen crates/midnight-vc-runtime/src/contract crates/midnight-vc-families/src/contract crates/midnight-vc-did-binding/src/contract
 
     # fetch_package <tarball> <url> <sha256> <extract dir>: download once,
     # verify the checksum on every run, then extract a fresh copy.
@@ -108,17 +110,31 @@ codegen-vc:
         "{{vc_passport_sha256}}" "$passport_dir"
     passport="$passport_dir/package"
 
+    did_binding_pkg="@midnight-ntwrk/credential-did-midnight"
+    did_binding_ver="{{vc_did_binding_version}}"
+    did_binding_dir="target-gen/${did_binding_pkg##*/}-${did_binding_ver}"
+    fetch_package "$did_binding_dir.tgz" \
+        "https://registry.npmjs.org/${did_binding_pkg}/-/${did_binding_pkg##*/}-${did_binding_ver}.tgz" \
+        "{{vc_did_binding_sha256}}" "$did_binding_dir"
+    did_binding="$did_binding_dir/package"
+
     staging="$passport/core-compact-staging"
     mkdir -p "$staging/credentials"
     cp "$core/credentials.compact" "$staging/credentials.compact"
     find "$core/credentials" -type f -name '*.compact' \
         -exec cp {} "$staging/credentials/" \;
 
+    mkdir -p "$did_binding/dist/credentials"
+    cp "$core/credentials.compact" "$did_binding/dist/credentials.compact"
+    find "$core/credentials" -type f -name '*.compact' \
+        -exec cp {} "$did_binding/dist/credentials/" \;
+
     # "<module>:<crate>:<entry point>" — module name is the Rust file under
     # the selected crate's src/contract/ directory.
     contracts=(
         "credentials:midnight-vc-runtime:$core/credentials.compact"
         "digital_passport:midnight-vc-families:$passport/src/digital-passport-credential.compact"
+        "did_midnight:midnight-vc-did-binding:$did_binding/dist/did-midnight.compact"
     )
     for entry in "${contracts[@]}"; do
         module="${entry%%:*}"
@@ -127,33 +143,40 @@ codegen-vc:
         entry_point="${rest#*:}"
         out="target-gen/vc-${module}-out"
         rm -rf "$out"
-        compactc --rust --skip-ts "$entry_point" "$out"
+        # The Ledger 9 Rust AST backend is pinned by the `compact-did` flake
+        # input. `--skip-zk` keeps this reproducibility gate focused on Rust
+        # bindings; proof artifacts are qualified separately.
+        compactc-did --target rust --skip-zk "$entry_point" "$out"
         {
-            echo "//! GENERATED — do not edit; run \`just codegen-vc\`."
-            echo "//!"
+            echo "// GENERATED — do not edit; run \`just codegen-vc\`."
+            echo "//"
             if [ "$module" = "digital_passport" ]; then
-                echo "//! Family source: \`src/digital-passport-credential.compact\` in"
-                echo "//! \`@midnight-ntwrk/midnight-vc-passport@{{vc_passport_version}}\` (npm); core"
-                echo "//! contract \`@midnight-ntwrk/credential-compact@{{vc_core_version}}\` (npm),"
-                echo "//! staged into the package's \`core-compact-staging/\` by this recipe."
+                echo "// Family source: \`src/digital-passport-credential.compact\` in"
+                echo "// \`@midnight-ntwrk/midnight-vc-passport@{{vc_passport_version}}\` (npm); core"
+                echo "// contract \`@midnight-ntwrk/credential-compact@{{vc_core_version}}\` (npm),"
+                echo "// staged into the package's \`core-compact-staging/\` by this recipe."
+            elif [ "$module" = "did_midnight" ]; then
+                echo "// DID binding source: \`dist/did-midnight.compact\` in"
+                echo "// \`@midnight-ntwrk/credential-did-midnight@{{vc_did_binding_version}}\` (npm); core"
+                echo "// contract \`@midnight-ntwrk/credential-compact@{{vc_core_version}}\` (npm)."
             else
-                echo "//! Source: \`dist/credentials.compact\` in"
-                echo "//! \`@midnight-ntwrk/credential-compact@{{vc_core_version}}\` (npm)."
+                echo "// Source: \`dist/credentials.compact\` in"
+                echo "// \`@midnight-ntwrk/credential-compact@{{vc_core_version}}\` (npm)."
             fi
             cat "$out/contract/lib.rs"
         } > "crates/${crate}/src/contract/${module}.rs"
     done
-    cargo fmt -p midnight-vc-runtime -p midnight-vc-families
+    cargo fmt -p midnight-vc-runtime -p midnight-vc-families -p midnight-vc-did-binding
 
 # Verify re-running the VC codegen produces no diff (regression signal for CI).
 codegen-vc-check: codegen-vc
-    git diff --exit-code -- crates/midnight-vc-runtime/src/contract crates/midnight-vc-families/src/contract
+    git diff --exit-code -- crates/midnight-vc-runtime/src/contract crates/midnight-vc-families/src/contract crates/midnight-vc-did-binding/src/contract
 
 # Our first-party workspace crates. Bare `cargo fmt/clippy/nextest` also
 # sweep the path-mounted third_party crates (cargo absorbs them as
 # workspace members), and we don't gate vendored code — so every recipe
 # scopes to this list, mirroring CI.
-crate_flags := "-p midnight-did-domain -p midnight-did-method -p midnight-did-api -p midnight-did -p midnight-did-runtime -p midnight-did-uniffi -p midnight-did-cli -p midnight-did-indexer -p midnight-did-resolver -p midnight-did-jubjub-schnorr -p midnight-passport-account-source -p midnight-passport-account -p midnight-passport-vault-source -p midnight-vc-domain -p midnight-vc-families -p midnight-vc-proof -p midnight-vc-runtime"
+crate_flags := "-p midnight-did-domain -p midnight-did-method -p midnight-did-api -p midnight-did -p midnight-did-runtime -p midnight-did-uniffi -p midnight-did-cli -p midnight-did-indexer -p midnight-did-resolver -p midnight-did-jubjub-schnorr -p midnight-passport-account-source -p midnight-passport-account -p midnight-passport-vault-source -p midnight-vc-did-binding -p midnight-vc-domain -p midnight-vc-families -p midnight-vc-proof -p midnight-vc-runtime"
 
 # Family bindings are opt-in (`default = []`). Run a separate feature-complete
 # pass so `--all-features` does not change unrelated workspace crates.
@@ -185,13 +208,13 @@ coverage_floor := "87"
 
 # Coverage scope: every first-party crate; excludes the codegen artifact
 # (gated by codegen-check, not tests) and service/demo bin entrypoints.
-coverage_crates := "-p midnight-did-domain -p midnight-did-method -p midnight-did-api -p midnight-did -p midnight-did-runtime -p midnight-did-indexer -p midnight-did-jubjub-schnorr -p midnight-did-resolver -p midnight-did-uniffi -p midnight-did-cli -p midnight-passport-account-source -p midnight-passport-account -p midnight-passport-vault-source -p midnight-vc-domain -p midnight-vc-families -p midnight-vc-proof -p midnight-vc-runtime"
+coverage_crates := "-p midnight-did-domain -p midnight-did-method -p midnight-did-api -p midnight-did -p midnight-did-runtime -p midnight-did-indexer -p midnight-did-jubjub-schnorr -p midnight-did-resolver -p midnight-did-uniffi -p midnight-did-cli -p midnight-passport-account-source -p midnight-passport-account -p midnight-passport-vault-source -p midnight-vc-did-binding -p midnight-vc-domain -p midnight-vc-families -p midnight-vc-proof -p midnight-vc-runtime"
 coverage_features := "--features midnight-vc-families/digital-passport"
 # `contract/generated\.rs` is the DID codegen artifact;
-# `contract/{credentials,digital_passport}\.rs` are the VC ones.
+# `contract/{credentials,digital_passport,did_midnight}\.rs` are the VC ones.
 # Generated code is gated by `codegen-check` / `codegen-vc-check`, not by tests;
 # every hand-written line in those crates stays in scope.
-coverage_exclude := 'contract/generated\.rs|contract/credentials\.rs|contract/digital_passport\.rs|src/main\.rs|src/bin/'
+coverage_exclude := 'contract/generated\.rs|contract/credentials\.rs|contract/digital_passport\.rs|contract/did_midnight\.rs|src/main\.rs|src/bin/'
 
 # HTML coverage report for humans.
 coverage:
