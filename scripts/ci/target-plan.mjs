@@ -5,6 +5,7 @@
 
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
+import { readFileSync } from "node:fs";
 import path from "node:path";
 
 export const DeliveryProfile = Object.freeze({
@@ -187,6 +188,12 @@ export function makeTargetPlan(paths, {
   };
 }
 
+export function metadataOnlyEdit(eventName, event) {
+  const keys = Object.keys(event?.changes ?? {});
+  return eventName === "pull_request" && event?.action === "edited"
+    && keys.length > 0 && keys.every((key) => key === "body" || key === "title");
+}
+
 function option(argv, name) {
   const index = argv.indexOf(name);
   return index === -1 ? undefined : argv[index + 1];
@@ -245,6 +252,18 @@ export function run(argv = process.argv.slice(2), {
     forceFull: has(argv, "--full") || paths === null,
     includeAudit: has(argv, "--audit"),
   });
+  const eventFile = option(argv, "--event-file");
+  const event = eventFile ? JSON.parse(readFileSync(eventFile, "utf8")) : null;
+  const metadataOnly = metadataOnlyEdit(option(argv, "--event-name"), event);
+  if (metadataOnly) {
+    plan.mode = "policy-only";
+    plan.targets = [Target.POLICY];
+    plan.packages = [];
+    plan.audit = false;
+  }
+  plan.reason = metadataOnly ? "body/title-only pull_request.edited" : `${option(argv, "--event-name") ?? "local"}/${event?.action ?? "source-or-full"}`;
+  plan.base = option(argv, "--base") ?? null;
+  plan.head = option(argv, "--head") ?? null;
   const format = option(argv, "--format") ?? "summary";
   if (format === "json") stdout.write(`${JSON.stringify(plan, null, 2)}\n`);
   else if (format === "github") stdout.write(githubOutput(plan));

@@ -9,7 +9,7 @@ compact_revision=d6513a24debac14d43a8199460d9dc2c6d9af2b1
 ledger_revision=6fbc2e3900845a858f70eebf8a0deab1d4d3c0d6
 zk_revision=bca8db4d9e2c1ecaa5d1db5ba7a201935b6c6c8a
 zkir_revision=3377ad9e48741f60e0aa17010b6f23e34223d906
-repository_url=https://github.com/MediaNoxLabs/midnight-identity.git
+repository_url=https://github.com/betsudo/midnight-identity.git
 revision=
 
 while (( $# > 0 )); do

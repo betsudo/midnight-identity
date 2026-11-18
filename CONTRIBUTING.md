@@ -85,11 +85,10 @@ dev loop:
 
 5. **Open a draft PR against the issue's recorded delivery base.** Normal
    library and factory work targets `develop`; release promotion targets
-   `rust-codegen`. Keep exactly one `factory-delivery-target` and
-   `factory-stacked-parent` marker from the PR template. Use `none` for a
-   direct PR; for a temporary stack, record the exact issue branch as the
-   parent while retaining the durable final target. CI rejects a base that
-   does not match those markers. Keep the diff focused; reference the
+   `rust-codegen`. Keep exactly one `factory-delivery-target` marker from
+   the PR template. GitHub's actual base must be that target or a distinct
+   `<type>/issue-N` temporary parent. No parent marker is required; promotion
+   to the final target needs no body update. Keep the diff focused; reference the
    ADR(s) you touched (or argue for a new one if you're changing a
    load-bearing decision).
 

@@ -59,8 +59,8 @@ test("commit and PR subjects require approved type and scope", () => {
   ]) assert.equal(validateSubject(subject).length, 1, subject);
 });
 
-test("PR bases require one explicit durable target and stacked-parent disposition", () => {
-  const direct = "<!-- factory-delivery-target: develop -->\n<!-- factory-stacked-parent: none -->";
+test("PR bases infer temporary stacks and promotion from one final target", () => {
+  const direct = "<!-- factory-delivery-target: develop -->";
   assert.deepEqual(validatePullRequestBase({ base: "develop", head: "fix/issue-58", body: direct }), []);
   assert.ok(validatePullRequestBase({ base: "main", head: "fix/issue-58", body: direct }).length > 0);
 
@@ -69,8 +69,10 @@ test("PR bases require one explicit durable target and stacked-parent dispositio
 
   const stacked = "<!-- factory-delivery-target: develop -->\n<!-- factory-stacked-parent: fix/issue-54 -->";
   assert.deepEqual(validatePullRequestBase({ base: "fix/issue-54", head: "chore/issue-56", body: stacked }), []);
+  assert.deepEqual(validatePullRequestBase({ base: "develop", head: "chore/issue-56", body: stacked }), []);
+  assert.deepEqual(validatePullRequestBase({ base: "fix/issue-54", head: "chore/issue-56", body: direct }), []);
   for (const candidate of [
-    { base: "develop", head: "chore/issue-56", body: stacked },
+    { base: "rust-codegen", head: "chore/issue-56", body: direct },
     { base: "feature/issue-54", head: "chore/issue-56", body: stacked },
     { base: "fix/issue-54", head: "fix/issue-54", body: stacked },
     { base: "develop", head: "fix/issue-58", body: "" },

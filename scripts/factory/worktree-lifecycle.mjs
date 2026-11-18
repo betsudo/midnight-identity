@@ -9,7 +9,7 @@ import { fileURLToPath } from "node:url";
 import os from "node:os";
 import path from "node:path";
 
-const REPOSITORY = "MediaNoxLabs/midnight-identity";
+const REPOSITORY = "betsudo/midnight-identity";
 const SHA = /^[0-9a-f]{40}$/u;
 const ISSUE_BRANCH = /^(?:feat|fix|docs|refactor|test|ci|chore)\/issue-[1-9]\d*$/u;
 const MERGE_BASE = /^(?:develop|rust-codegen|milestone-(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*))$/u;

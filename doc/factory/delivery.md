@@ -22,9 +22,11 @@ Factory, harness, CI, documentation, dependency, and governance items target
 `develop`. Release promotion targets `rust-codegen`. A stacked PR can
 temporarily target its issue-backed parent branch, but its issue and handoff
 must retain the final target. The GitHub default branch is not delivery
-authority. The PR template's single `factory-delivery-target` and
-`factory-stacked-parent` markers are the hosted machine-readable record. A
-direct PR records `none`; a stack records the exact `<type>/issue-N` parent.
+authority. The PR template's exactly one `factory-delivery-target` marker
+records the durable target. GitHub's actual base must equal that target or
+be a distinct `<type>/issue-N` temporary branch. Arbitrary and wrong durable
+bases fail closed. Legacy parent markers are ignored, so promotion to the
+final target cannot be blocked by stale body state.
 
 ## Profiles
 

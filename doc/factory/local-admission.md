@@ -71,6 +71,15 @@ the planner's affected Rust, WASM, coverage, and Compact targets; GitHub runs
 those selected lanes against the pushed exact head and the stable `Required
 CI` aggregator remains authoritative.
 
+## Repository transfer compatibility
+
+New local admission receipts and lifecycle operations identify
+`betsudo/midnight-identity`. Old-owner local receipts intentionally fail
+identity validation and must be regenerated. Historical v1 metrics retain
+their original repository identity and remain readable; new metrics use the
+current owner. Hosted signature and immutable-Git checks derive identity from
+the event repository.
+
 ## Operator commands
 
 ```bash

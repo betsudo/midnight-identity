@@ -7,7 +7,7 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 
-export const REPOSITORY = "MediaNoxLabs/midnight-identity";
+export const REPOSITORY = "betsudo/midnight-identity";
 const SAFE_ID = /^[a-z0-9][a-z0-9._:-]{0,63}$/u;
 const SAFE_MODEL = /^[A-Za-z0-9][A-Za-z0-9._/-]{0,127}$/u;
 const SAFE_REASONING = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/u;
@@ -65,7 +65,8 @@ export function validateRecord(record) {
   const errors = [];
   if (!exactKeys(record, TOP_KEYS, "$", errors)) return { ok: false, errors };
   if (record.schemaVersion !== 1) errors.push("$.schemaVersion must equal 1");
-  if (record.repository !== REPOSITORY) errors.push(`$.repository must equal ${REPOSITORY}`);
+  // Read historical v1 metrics without rewriting their original provenance.
+  if (![REPOSITORY, "MediaNoxLabs/midnight-identity"].includes(record.repository)) errors.push(`$.repository must equal ${REPOSITORY}`);
   if (!Number.isSafeInteger(record.issue) || record.issue < 1) errors.push("$.issue must be a positive integer");
   if (record.pr !== null && (!Number.isSafeInteger(record.pr) || record.pr < 1)) errors.push("$.pr must be null or a positive integer");
   if (typeof record.headSha !== "string" || !SHA.test(record.headSha)) errors.push("$.headSha must be an exact lowercase SHA");

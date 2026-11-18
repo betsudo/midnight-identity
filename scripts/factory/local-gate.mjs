@@ -10,7 +10,7 @@ import path from "node:path";
 
 import { validateBranch } from "./contribution-policy.mjs";
 
-const REPOSITORY = "MediaNoxLabs/midnight-identity";
+const REPOSITORY = "betsudo/midnight-identity";
 const SHA = /^[0-9a-f]{40}$/u;
 const DELIVERY_TARGET = /^(?:develop|rust-codegen)$/u;
 const BASE_REF = /^(?:origin\/)?(?:(?:develop|rust-codegen)|(?:feat|fix|docs|refactor|test|ci|chore)\/issue-[1-9]\d*)$/u;

@@ -28,8 +28,8 @@ Do not edit consumer repositories unless the owner separately authorizes it.
 - Use one isolated worktree per issue. Name its branch
   `<type>/issue-<number>`, where type is one of `feat`, `fix`, `docs`,
   `refactor`, `test`, `ci`, or `chore`.
-- Start pull requests as drafts. An explicitly recorded stacked parent may be
-  the temporary PR base; retain `develop` as the final delivery target.
+- Start pull requests as drafts. A distinct issue branch may be the
+  temporary PR base; retain the durable final delivery-target marker.
 - Every commit and pull-request title follows the approved Conventional Commit
   scopes in [CONTRIBUTING.md](CONTRIBUTING.md). Every commit has an exact DCO
   trailer and a GitHub-verifiable OpenPGP signature.

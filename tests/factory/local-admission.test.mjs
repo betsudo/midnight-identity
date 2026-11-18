@@ -22,7 +22,7 @@ const base = "a".repeat(40);
 const head = "b".repeat(40);
 const receipt = {
   schemaVersion: 1,
-  repository: "MediaNoxLabs/midnight-identity",
+  repository: "betsudo/midnight-identity",
   issue: 63,
   branch: "chore/issue-63",
   deliveryTarget: "develop",
@@ -49,6 +49,7 @@ test("local gate receipt binds exact repository, branch, base, head, plan, and c
   assert.deepEqual(validateReceipt(receipt, options), []);
   for (const candidate of [
     { ...receipt, repository: "example/other" },
+    { ...receipt, repository: "MediaNoxLabs/midnight-identity" },
     { ...receipt, branch: "chore/issue-64" },
     { ...receipt, baseSha: "c".repeat(40) },
     { ...receipt, headSha: "c".repeat(40) },

@@ -66,12 +66,18 @@ jobs:
           FORCE_FULL: ${{ github.event_name != 'pull_request' || github.event.pull_request.base.ref == 'rust-codegen' || startsWith(github.event.pull_request.base.ref, 'milestone-') }}
           INCLUDE_AUDIT: ${{ github.event_name == 'schedule' }}
         run: |
-          args=(--base "$BASE_SHA" --head "$HEAD_SHA" --delivery-profile production-ready)
+          args=(--base "$BASE_SHA" --head "$HEAD_SHA" --delivery-profile production-ready --event-file "$GITHUB_EVENT_PATH" --event-name "$GITHUB_EVENT_NAME")
           if [[ "$FORCE_FULL" == "true" ]]; then args+=(--full); fi
           if [[ "$INCLUDE_AUDIT" == "true" ]]; then args+=(--audit); fi
           node scripts/ci/target-plan.mjs "${args[@]}" --format github >> "$GITHUB_OUTPUT"
           node scripts/ci/target-plan.mjs "${args[@]}" --format json > target-plan.json
           cat target-plan.json
+          {
+            echo '### Immutable change plan'
+            echo '```json'
+            cat target-plan.json
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload immutable plan
         uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
@@ -118,8 +124,9 @@ jobs:
           PR_BODY: ${{ github.event.pull_request.body }}
           EVENT_NAME: ${{ github.event_name }}
           GH_TOKEN: ${{ github.token }}
+          EVENT_REPOSITORY: ${{ github.repository }}
         run: |
-          args=(--base "$BASE_SHA" --head "$HEAD_SHA" --repo MediaNoxLabs/midnight-identity --github-signatures)
+          args=(--base "$BASE_SHA" --head "$HEAD_SHA" --repo "$EVENT_REPOSITORY" --github-signatures)
           if [[ "$EVENT_NAME" == "pull_request" ]]; then
             args+=(--branch "$HEAD_BRANCH" --pr-title "$PR_TITLE" --pr-base "$BASE_BRANCH" --pr-body "$PR_BODY")
           else
@@ -127,7 +134,18 @@ jobs:
             # a GitHub-created single-parent commit can be a squash merge result.
             args+=(--allow-generated-squash)
           fi
-          node scripts/factory/contribution-policy.mjs "${args[@]}"
+          if ! node scripts/factory/contribution-policy.mjs "${args[@]}" > policy-result.txt 2>&1; then
+            cat policy-result.txt
+            {
+              echo '### Policy admission failed — repair before retrying expensive lanes'
+              echo 'Fix the reported title/base/marker or exact commit DCO/signature, then rerun.'
+              echo '```text'
+              cat policy-result.txt
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+          cat policy-result.txt
 
       - name: Scan added lines for credential patterns
         if: ${{ github.event_name == 'pull_request' || github.event_name == 'push' }}
@@ -138,7 +156,7 @@ jobs:
 
   rust:
     name: Rust format, lint, and compile
-    needs: plan
+    needs: [plan, policy]
     if: ${{ needs.plan.outputs.rust == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -173,9 +191,10 @@ jobs:
         env:
           CANDIDATE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
           GIT_CONSUMER_TARGET_DIR: ${{ github.workspace }}/target
+          EVENT_REPOSITORY_URL: ${{ github.server_url }}/${{ github.repository }}.git
         run: |
           nix develop .#rust --command bash scripts/ci/git-consumer-smoke.sh \
-            --repo-url https://github.com/MediaNoxLabs/midnight-identity.git \
+            --repo-url "$EVENT_REPOSITORY_URL" \
             --rev "$CANDIDATE_SHA"
 
       - name: Save trusted Cargo source cache
@@ -190,7 +209,7 @@ jobs:
 
   unit:
     name: Unit ${{ matrix.os }}
-    needs: plan
+    needs: [plan, policy]
     if: ${{ needs.plan.outputs.unit == 'true' }}
     strategy:
       fail-fast: false
@@ -259,7 +278,7 @@ jobs:
 
   wasm:
     name: WASM compatibility
-    needs: plan
+    needs: [plan, policy]
     if: ${{ needs.plan.outputs.wasm == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -296,7 +315,7 @@ jobs:
 
   coverage:
     name: Coverage
-    needs: plan
+    needs: [plan, policy]
     if: ${{ needs.plan.outputs.coverage == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
@@ -329,7 +348,7 @@ jobs:
 
   did_codegen:
     name: DID codegen drift
-    needs: plan
+    needs: [plan, policy]
     if: ${{ needs.plan.outputs.did_codegen == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
@@ -351,7 +370,7 @@ jobs:
 
   vc_codegen:
     name: VC codegen drift
-    needs: plan
+    needs: [plan, policy]
     if: ${{ needs.plan.outputs.vc_codegen == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
@@ -382,7 +401,7 @@ jobs:
 
   audit:
     name: Periodic factory audit
-    needs: plan
+    needs: [plan, policy]
     if: ${{ needs.plan.outputs.audit == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -445,12 +464,21 @@ jobs:
             echo "change plan did not succeed: $PLAN_RESULT" >&2
             exit 1
           fi
+          if [[ "$POLICY_RESULT" != "success" ]]; then
+            echo "Policy admission failed ($POLICY_RESULT); expensive lanes blocked. See Policy and factory contracts for the owning failure and repair." | tee -a "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
           failures=0
           for lane in POLICY RUST UNIT WASM COVERAGE DID_CODEGEN VC_CODEGEN AUDIT; do
             selected_name="${lane}_SELECTED"
             result_name="${lane}_RESULT"
             selected="${!selected_name}"
             result="${!result_name}"
+            if [[ "$selected" == "true" ]]; then
+              echo "${lane,,}: selected — $result" >> "$GITHUB_STEP_SUMMARY"
+            else
+              echo "${lane,,}: intentionally skipped by immutable plan" >> "$GITHUB_STEP_SUMMARY"
+            fi
             if [[ "$selected" == "true" && "$result" != "success" ]]; then
               echo "${lane,,} was selected but finished as $result" >&2
               failures=$((failures + 1))

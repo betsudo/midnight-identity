@@ -1,6 +1,5 @@
-<!-- Keep exactly one of each marker. Change the stacked parent only for an explicitly issue-backed stack. -->
+<!-- Keep exactly one final delivery-target marker. GitHub's actual base determines any temporary issue-branch stack. -->
 <!-- factory-delivery-target: develop -->
-<!-- factory-stacked-parent: none -->
 
 ## Summary
 
@@ -8,7 +7,7 @@
 
 ## Scope and context
 
-<!-- Name the issue, delivery profile, final target, and any temporary stacked parent. Keep the markers above aligned. -->
+<!-- Name the issue, delivery profile, final target, and any temporary stacked parent. Keep the final target above aligned; no duplicated parent marker is required. -->
 
 ## Acceptance criteria
 
