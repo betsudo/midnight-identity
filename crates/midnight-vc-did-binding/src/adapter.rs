@@ -240,4 +240,100 @@ mod tests {
             BindingError::InvalidStateVersion,
         );
     }
+
+    #[test]
+    fn creates_an_authentication_holder_binding() {
+        let method = resolve_midnight_did_method_binding(
+            &resolution(),
+            DID,
+            "#issuer-key",
+            VerificationRelationship::Authentication,
+        )
+        .unwrap();
+        let holder = create_midnight_did_holder_binding(method).unwrap();
+        assert_eq!(
+            holder.method.verification_relationship,
+            VerificationRelationship::Authentication
+        );
+        assert_eq!(holder.method.controller_address, [0x11; 32]);
+    }
+
+    #[test]
+    fn rejects_offchain_and_cross_network_subjects() {
+        let offchain = format!("did:midnight:offchain:{}", "ab".repeat(32));
+        assert_eq!(
+            resolve_midnight_did_method_binding(
+                &resolution(),
+                &offchain,
+                "#issuer-key",
+                VerificationRelationship::Authentication,
+            )
+            .unwrap_err(),
+            BindingError::InvalidDid,
+        );
+
+        let mainnet = format!("did:midnight:mainnet:{}", "11".repeat(32));
+        assert_eq!(
+            resolve_midnight_did_method_binding(
+                &resolution(),
+                &mainnet,
+                "#issuer-key",
+                VerificationRelationship::Authentication,
+            )
+            .unwrap_err(),
+            BindingError::SubjectMismatch,
+        );
+    }
+
+    #[test]
+    fn rejects_missing_methods_relationships_and_foreign_controllers() {
+        let mut missing_method = resolution();
+        missing_method.did_document.as_mut().unwrap().verification_method = None;
+        assert_eq!(
+            resolve_midnight_did_method_binding(
+                &missing_method,
+                DID,
+                "#issuer-key",
+                VerificationRelationship::AssertionMethod,
+            )
+            .unwrap_err(),
+            BindingError::MethodMissing,
+        );
+
+        let mut missing_relationship = resolution();
+        missing_relationship.did_document.as_mut().unwrap().assertion_method = None;
+        assert_eq!(
+            resolve_midnight_did_method_binding(
+                &missing_relationship,
+                DID,
+                "#issuer-key",
+                VerificationRelationship::AssertionMethod,
+            )
+            .unwrap_err(),
+            BindingError::RelationshipMissing,
+        );
+
+        let mut foreign_controller = resolution();
+        let document = foreign_controller.did_document.as_mut().unwrap();
+        let method = document.verification_method.as_ref().unwrap()[0].clone();
+        document.verification_method = Some(vec![
+            midnight_did_domain::VerificationMethod::new(midnight_did_domain::NewVerificationMethod {
+                id: method.id().as_str().to_owned(),
+                type_: method.type_(),
+                controller: format!("did:midnight:testnet:{}", "22".repeat(32)),
+                public_key_jwk: method.public_key_jwk().clone(),
+            })
+            .unwrap(),
+        ]);
+        assert_eq!(
+            resolve_midnight_did_method_binding(
+                &foreign_controller,
+                DID,
+                "#issuer-key",
+                VerificationRelationship::AssertionMethod,
+            )
+            .unwrap_err(),
+            BindingError::InvalidMethodProfile,
+        );
+    }
 }

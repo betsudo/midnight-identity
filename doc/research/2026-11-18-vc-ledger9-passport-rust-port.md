@@ -61,13 +61,48 @@ generated files reproducible and untouched.
   ports. DigitalPassport rc5 still selects `NoStatusBinding`; this slice does
   not invent Passport revocation semantics.
 
+## IR and proof qualification
+
+The exact compiler compatibility report selects runtime ABI 54, IR schema 20,
+Ledger `9.1.0.2`, and `midnight-zkir=3.2.1` at
+`3377ad9e48741f60e0aa17010b6f23e34223d906`. The selected ZKIR binary was built
+from that revision and reports `midnight-zkir 3.2.1`. A compiler run with the
+binary on `PATH` produced byte-identical Rust to the reproducible `--skip-zk`
+run.
+
+No ZKIR source, proving key, or verifier key is expected for this cohort. The
+three contracts export 148 circuits in total, and their authoritative
+`contract-info.json` files classify every circuit as pure, witness-free, and
+`proof: false`:
+
+| Contract | Exported circuits | Proof-required | Witnesses | Ledger entries |
+|---|---:|---:|---:|---:|
+| VC Core | 34 | 0 | 0 | 0 |
+| DID binding | 39 | 0 | 0 | 0 |
+| DigitalPassport | 75 | 0 | 0 | 0 |
+
+The generated Rust IR SHA-256 digests are
+`164cbf27bc543a13c477017dfdc5b69d99227bd9409c3d767fee74a06317aa99`
+(VC Core),
+`5783007e39b9861e0fec40479b6d09a91e89164b1c945ac018d9d587884c0c93`
+(DID binding), and
+`05cc460f45c528d4e67e9c4ad133476f369c631b5d4a39e9d4edb538c460df84`
+(DigitalPassport).
+
+The `Proof` values in this API are detached Jubjub signatures checked by pure
+circuits; they are not Ledger transaction proofs. Consequently, detached-proof
+signing, verification, tamper refusal, and upstream vector parity are the
+applicable proof gates. A proof-server or funded Ledger transaction would not
+exercise additional behavior in these empty-ledger contracts.
+
 ## Qualification and rollback
 
 Local qualification covers exact-tarball regeneration, focused Rust tests,
 golden vectors, malformed/tampered proofs, DID-binding refusal tests, clippy,
 formatting, codegen drift, metadata source inspection, and applicable factory
 gates. No standalone chain is required because every migrated contract in this
-slice is pure and has an empty ledger.
+slice is pure, witness-free, and has an empty ledger. Native Linux remains a
+hosted-CI qualification; local results are from Apple Silicon macOS.
 
 Rollback is a coordinated reversion of the three npm pins, generated files,
 crate-local Ledger 9 pins, AST wrapper layout, and lockfile. Do not independently
