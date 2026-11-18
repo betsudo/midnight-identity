@@ -8,7 +8,7 @@ import path from "node:path";
 import test from "node:test";
 import { metadataOnlyEdit, run } from "../../scripts/ci/target-plan.mjs";
 
-test("only known body/title edits bypass source gates", () => {
+test("only known body/title edits are eligible for proven source-run reuse", () => {
   for (const changes of [{ body: {} }, { title: {} }, { body: {}, title: {} }]) {
     assert.equal(metadataOnlyEdit("pull_request", { action: "edited", changes }), true);
   }
@@ -28,8 +28,8 @@ test("event-backed immutable plans preserve source correctness and exact identit
     const base = "a".repeat(40);
     const head = "b".repeat(40);
     for (const [eventName, action, changes, policyOnly] of [
-      ["pull_request", "edited", { body: {} }, true],
-      ["pull_request", "edited", { title: {} }, true],
+      ["pull_request", "edited", { body: {} }, false],
+      ["pull_request", "edited", { title: {} }, false],
       ["pull_request", "edited", { base: {} }, false],
       ["pull_request", "edited", {}, false],
       ["pull_request", "edited", { unknown: {} }, false],
@@ -52,6 +52,25 @@ test("event-backed immutable plans preserve source correctness and exact identit
       if (policyOnly) assert.deepEqual(plan.targets, ["policy"]);
       else assert.ok(plan.targets.includes("rust"));
       assert.ok(plan.reason.includes(eventName));
+
+      let lookups = 0;
+      const proven = run(["--paths", "Cargo.toml", "--base", base, "--head", head,
+        "--event-name", eventName, "--event-file", eventFile, "--full", "--format", "json",
+        "--github-source-proof"], {
+        stdout: { write() {} },
+        sourceProof: () => { lookups++; return { runId: 99, artifactId: 5 }; },
+      });
+      const eligible = eventName === "pull_request" && action === "edited"
+        && ("body" in (changes ?? {}) || "title" in (changes ?? {}));
+      assert.equal(lookups, eligible ? 1 : 0);
+      assert.equal(proven.validationClass, eligible ? "metadata-reuse" : "source");
+      assert.equal(proven.mode, eligible ? "policy-only" : "full");
+      const unavailable = run(["--paths", "Cargo.toml", "--event-name", eventName,
+        "--event-file", eventFile, "--github-source-proof", "--format", "json"], {
+        stdout: { write() {} }, sourceProof: () => { throw new Error("API unavailable"); },
+      });
+      assert.equal(unavailable.validationClass, "source");
+      assert.ok(unavailable.targets.includes("rust"));
     }
   } finally {
     rmSync(directory, { recursive: true, force: true });

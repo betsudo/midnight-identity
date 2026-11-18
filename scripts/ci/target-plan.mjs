@@ -6,6 +6,7 @@
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { readFileSync } from "node:fs";
+import { findSourceValidation } from "./source-validation-proof.mjs";
 import path from "node:path";
 
 export const DeliveryProfile = Object.freeze({
@@ -222,7 +223,7 @@ function changedPaths(base, head, cwd) {
   }
 }
 
-function githubOutput(plan) {
+export function githubOutput(plan) {
   const selected = new Set(plan.targets);
   const values = {
     schema_version: plan.schemaVersion,
@@ -241,6 +242,7 @@ export function run(argv = process.argv.slice(2), {
   cwd = process.cwd(),
   stdout = process.stdout,
   stderr = process.stderr,
+  sourceProof = findSourceValidation,
 } = {}) {
   const explicitPaths = option(argv, "--paths");
   const paths = explicitPaths === undefined
@@ -255,15 +257,28 @@ export function run(argv = process.argv.slice(2), {
   const eventFile = option(argv, "--event-file");
   const event = eventFile ? JSON.parse(readFileSync(eventFile, "utf8")) : null;
   const metadataOnly = metadataOnlyEdit(option(argv, "--event-name"), event);
-  if (metadataOnly) {
+  plan.base = option(argv, "--base") ?? null;
+  plan.head = option(argv, "--head") ?? null;
+  plan.validationClass = "source";
+  let proof = null;
+  if (metadataOnly && has(argv, "--github-source-proof")) {
+    try {
+      proof = sourceProof({ repository: process.env.GITHUB_REPOSITORY,
+        runId: process.env.GITHUB_RUN_ID, pr: event?.number, ordinary: plan });
+    } catch { /* Preserve ordinary validation on unavailable proof. */ }
+  }
+  if (proof) {
     plan.mode = "policy-only";
     plan.targets = [Target.POLICY];
     plan.packages = [];
     plan.audit = false;
+    plan.validationClass = "metadata-reuse";
+    plan.sourceValidation = proof;
   }
-  plan.reason = metadataOnly ? "body/title-only pull_request.edited" : `${option(argv, "--event-name") ?? "local"}/${event?.action ?? "source-or-full"}`;
-  plan.base = option(argv, "--base") ?? null;
-  plan.head = option(argv, "--head") ?? null;
+  plan.reason = metadataOnly
+    ? (proof ? "body/title-only pull_request.edited: verified successful source run"
+      : "pull_request.edited: no compatible successful source proof; ordinary validation")
+    : `${option(argv, "--event-name") ?? "local"}/${event?.action ?? "source-or-full"}`;
   const format = option(argv, "--format") ?? "summary";
   if (format === "json") stdout.write(`${JSON.stringify(plan, null, 2)}\n`);
   else if (format === "github") stdout.write(githubOutput(plan));

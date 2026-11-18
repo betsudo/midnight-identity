@@ -38,6 +38,7 @@ jobs:
     timeout-minutes: 5
     permissions:
       contents: read
+      actions: read
     outputs:
       policy: ${{ steps.plan.outputs.policy }}
       rust: ${{ steps.plan.outputs.rust }}
@@ -65,12 +66,13 @@ jobs:
           HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
           FORCE_FULL: ${{ github.event_name != 'pull_request' || github.event.pull_request.base.ref == 'rust-codegen' || startsWith(github.event.pull_request.base.ref, 'milestone-') }}
           INCLUDE_AUDIT: ${{ github.event_name == 'schedule' }}
+          GH_TOKEN: ${{ github.token }}
         run: |
-          args=(--base "$BASE_SHA" --head "$HEAD_SHA" --delivery-profile production-ready --event-file "$GITHUB_EVENT_PATH" --event-name "$GITHUB_EVENT_NAME")
+          args=(--base "$BASE_SHA" --head "$HEAD_SHA" --delivery-profile production-ready --event-file "$GITHUB_EVENT_PATH" --event-name "$GITHUB_EVENT_NAME" --github-source-proof)
           if [[ "$FORCE_FULL" == "true" ]]; then args+=(--full); fi
           if [[ "$INCLUDE_AUDIT" == "true" ]]; then args+=(--audit); fi
-          node scripts/ci/target-plan.mjs "${args[@]}" --format github >> "$GITHUB_OUTPUT"
           node scripts/ci/target-plan.mjs "${args[@]}" --format json > target-plan.json
+          node --input-type=module -e 'import { readFileSync } from "node:fs"; import { githubOutput } from "./scripts/ci/target-plan.mjs"; process.stdout.write(githubOutput(JSON.parse(readFileSync("target-plan.json", "utf8"))));' >> "$GITHUB_OUTPUT"
           cat target-plan.json
           {
             echo '### Immutable change plan'

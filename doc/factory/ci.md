@@ -37,11 +37,22 @@ than repeating blocked lane failures. The immutable plan summary records the
 event reason and exact head/base; the aggregate lists selected and deliberately
 skipped lanes. Policy output supplies the failing contract and repair guidance.
 
-Only nonempty `pull_request.edited` changes consisting entirely of `body`
-and/or `title` select policy-only. Base edits, unknown/empty edits and source
-events retain affected/full selection; pushes, schedules and manual runs remain
-full. Hosted signature and immutable-Git checks use event repository identity
-and URL, not the former owner redirect.
+Nonempty `pull_request.edited` changes consisting entirely of `body` and/or
+`title` may select policy-only only after authenticated Actions evidence proves
+a prior completed successful source-validation run for the same repository,
+PR, workflow, exact head and exact base. Its run-owned immutable plan must match
+the ordinary source plan (including paths, packages and selected targets).
+Policy-only runs cannot recursively supply this proof; the current run is
+excluded. Lookup is bounded, and missing, expired, malformed, incompatible or
+unavailable API/artifact evidence retains ordinary affected/full validation.
+Thus shared concurrency cancellation cannot replace uncompleted source checks
+with a green metadata-only aggregate. The plan records the reused run/artifact
+IDs, or the ordinary-validation fallback reason. The plan job alone gains
+`actions: read`; labels and comments supply no evidence.
+
+Base edits, unknown/empty edits and source events always retain affected/full
+selection; pushes, schedules and manual runs remain full. Hosted signature and
+immutable-Git checks use event repository identity and URL.
 
 ## Cache policy
 
