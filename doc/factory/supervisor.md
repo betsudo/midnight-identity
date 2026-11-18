@@ -22,7 +22,7 @@ commands remain authoritative outside Pi.
 3. For crystallization/extraction issues, observe every referenced consumer
    checkout named in `.pi/extraction-policy.json` before delegation: repository
    identity, origin remote, `origin/develop` SHA, and status. Consumers are
-   read-only; `MediaNoxLabs/midnight-identity` is the only mutation target.
+   read-only; `betsudo/midnight-identity` is the only mutation target.
 4. Admit exactly one `factory-worker` for the issue. Pass the issue, worktree,
    branch, base, profile, acceptance criteria, selected target plan, and any
    recorded reference-repository observations.

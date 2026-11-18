@@ -27,7 +27,7 @@ audit and immutable target planner. For extraction/crystallization work, load
 `.pi/extraction-policy.json` and record each referenced consumer checkout's
 repository, origin remote, `origin/develop` SHA, and status with
 `scripts/factory/reference-repositories.mjs observe`; only
-`MediaNoxLabs/midnight-identity` may be mutated. Record a low/medium/high
+`betsudo/midnight-identity` may be mutated. Record a low/medium/high
 complexity classification from reversibility, blast radius, and evidence cost.
 Stop on ambiguous issue scope, branch/base, existing worktree ownership, dirty
 state, unknown reference repository, remote/head mismatch, consumer mutation,

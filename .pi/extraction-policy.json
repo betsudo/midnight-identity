@@ -1,13 +1,13 @@
 {
   "schemaVersion": 1,
   "mutationTarget": {
-    "repository": "MediaNoxLabs/midnight-identity",
-    "requiredRemote": "https://github.com/MediaNoxLabs/midnight-identity.git"
+    "repository": "betsudo/midnight-identity",
+    "requiredRemote": "https://github.com/betsudo/midnight-identity.git"
   },
   "referenceRepositories": [
     {
-      "repository": "MediaNoxLabs/oxid",
-      "allowedRemote": "https://github.com/MediaNoxLabs/oxid.git",
+      "repository": "betsudo/oxid",
+      "allowedRemote": "https://github.com/betsudo/oxid.git",
       "defaultReference": "origin/develop",
       "access": "read-only",
       "requiredEvidence": [

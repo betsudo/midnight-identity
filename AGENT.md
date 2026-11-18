@@ -1,6 +1,6 @@
 # AGENT
 
-This is the always-loaded operating contract for `MediaNoxLabs/midnight-identity`,
+This is the always-loaded operating contract for `betsudo/midnight-identity`,
 the repository being evolved as **midnight-libs**. Keep this file concise. Load
 the [factory reference](doc/factory/README.md),
 [architecture](doc/architecture.md), and relevant

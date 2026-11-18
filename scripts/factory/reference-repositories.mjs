@@ -26,12 +26,12 @@ export function loadExtractionPolicy(repoRoot = root) {
 export function validateExtractionPolicy(policy) {
   const errors = [];
   if (policy?.schemaVersion !== 1) errors.push("schemaVersion must be 1");
-  if (policy?.mutationTarget?.repository !== "MediaNoxLabs/midnight-identity") {
-    errors.push("mutation target must be MediaNoxLabs/midnight-identity");
+  if (policy?.mutationTarget?.repository !== "betsudo/midnight-identity") {
+    errors.push("mutation target must be betsudo/midnight-identity");
   }
   const references = policy?.referenceRepositories;
   const expected = new Map([
-    ["MediaNoxLabs/oxid", { remote: "https://github.com/MediaNoxLabs/oxid.git" }],
+    ["betsudo/oxid", { remote: "https://github.com/betsudo/oxid.git" }],
     ["input-output-hk/lace-id-portal", {
       remote: "https://github.com/input-output-hk/lace-id-portal.git",
       remoteSymbolicHead: "refs/heads/develop",
