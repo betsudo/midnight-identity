@@ -80,7 +80,7 @@ case "${1:-}" in
     run_pinned .#pi bash -c '
       set -euo pipefail
       node scripts/factory/check.mjs
-      exec pi "$@"
+      exec pi --exclude-tools taskflow "$@"
     ' midnight-identity-pi "$@"
     ;;
   --hook)

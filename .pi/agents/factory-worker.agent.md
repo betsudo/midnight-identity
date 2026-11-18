@@ -1,13 +1,16 @@
 ---
 name: "factory-worker"
 description: "Implement one bounded issue in its assigned midnight-libs worktree and return a draft candidate to the supervisor."
-tools: read, grep, find, ls, bash
+tools: read, grep, find, ls, bash, edit, write
 argument-hint: "bounded handoff from factory-supervisor"
+model: "openai-codex/gpt-6.1-sol"
+thinking: medium
 systemPromptMode: append
 inheritProjectContext: true
 inheritSkills: true
 user-invocable: false
 maxSubagentDepth: 0
+acceptanceRole: writer
 timeoutMs: 2700000
 turnBudget: {"maxTurns":16,"graceTurns":1}
 ---

@@ -27,10 +27,10 @@ The layering direction is: **nix provides pi, pi reads the repo policy.**
    the first session asks you to **trust** the repository because that
    file installs extension packages. It pins `dev-loops` and `pi-subagents`
    (public npm) into the git-ignored `.pi/npm/` prefix, with
-   `openai-codex/gpt-5.5` at medium reasoning as the repository default for
-   Pi 0.75.4. Oxid currently exercises newer `gpt-5.6-terra` and taskflow/UI
-   packages; those are intentionally not adopted here because this Nix-pinned
-   Pi runtime does not list that model and the factory needs only one bounded
+   `openai-codex/gpt-6.1-sol` at medium reasoning as the repository default for
+   Pi 1.0.2. That provider/model pair was exercised with the repository's
+   ChatGPT Codex account; the previous `gpt-5.5` setting is not offered by this
+   Pi runtime. Taskflow/UI packages remain outside this bounded
    supervisor-to-worker delegation path.
 3. The `dev-loops` package extension is intentionally disabled in settings
    (`extensions: []`) so Pi does not expose unavailable `/dev-loops` slash
@@ -40,20 +40,30 @@ The layering direction is: **nix provides pi, pi reads the repo policy.**
    `factory-worker` roles implement the bounded supervisor/sole-writer split;
    delivery and worker limits are machine-readable in `.pi/`.
 
-The `pi-subagents@0.34.0` pin is selected from package-source evidence, not from
-peer metadata or `./bootstrap.sh --pi --version` alone: `npm pack
-pi-subagents@0.35.0` shows `src/watchdog/review.ts` imports
-`@earendil-works/pi-ai/compat`, which Pi 0.75.4 does not provide, while
-`npm pack pi-subagents@0.34.0` shows that compatibility import is absent.
-`pi-subagents@0.34.0` is therefore the smallest probed pin that avoids the
-known Pi 0.75.4 extension-load ABI mismatch. The external supervisor still owns
-the real tracked-extension startup smoke before final approval; do not treat the
-version command alone as runtime-extension compatibility evidence.
+The project also applies an `autoload: false` unload delta to any globally
+installed `pi-taskflow@0.2.10` extension and skill, and `bootstrap.sh --pi`
+denies the `taskflow` tool as defense in depth. This matters because taskflow's
+generic delegation prompt otherwise replaces the repository's exact
+`factory-worker` with a built-in role. The supported smoke is a synchronous
+`subagent` dispatch of `factory-worker`; it must report
+`openai-codex/gpt-6.1-sol`, expose writer tools, and leave taskflow unavailable.
+The unload delta changes no user-global Pi settings.
+
+The `pi-subagents@0.35.0` pin is selected from package-source and startup
+evidence, not from peer metadata or `./bootstrap.sh --pi --version` alone.
+Unlike `pi-subagents@0.34.0`, which installs private `typebox` and
+`@earendil-works/pi-tui` copies, 0.35.0 declares wildcard peer dependencies and
+uses the Pi 1.0.2 runtime's packages. Its `@earendil-works/pi-ai/compat` import
+is present in the current runtime and the tracked extension loads without the
+duplicate-runtime warning. Roll back both Pi and the subagent pin together if a
+future runtime removes that compatibility surface. The external supervisor
+still owns the real tracked-extension startup smoke before final approval; do
+not treat the version command alone as runtime-extension compatibility evidence.
 
 Everything pi writes locally (`.pi/git/`, `.pi/npm/`, `.pi/harness/`,
-`.pi/agent/`, and `.pi/sessions/`) is git-ignored. Settings, delivery profiles,
-subagent policy, and repository agents are tracked and CODEOWNERS-gated — review
-changes to them like executable tooling.
+`.pi/agent/`, `.pi/sessions/`, and `.pi/taskflows/runs/`) is git-ignored.
+Settings, delivery profiles, subagent policy, and repository agents are tracked
+and CODEOWNERS-gated — review changes to them like executable tooling.
 
 ## Commands
 
@@ -95,7 +105,7 @@ configuration check.
 
 Reusable components may be extracted only from the read-only consumer
 repositories listed in [`.pi/extraction-policy.json`](../.pi/extraction-policy.json):
-`MediaNoxLabs/oxid` and `input-output-hk/lace-id-portal`. The authorized Portal
+`betsudo/oxid` and `input-output-hk/lace-id-portal`. The authorized Portal
 checkout origin is `https://github.com/input-output-hk/lace-id-portal.git`; its
 remote symbolic HEAD is `refs/heads/develop`, so the recorded reference remains
 `origin/develop`. Before admitting the worker, the supervisor records each used
@@ -103,11 +113,11 @@ checkout's origin remote, `origin/develop` SHA, and `git status --short` with:
 
 ```bash
 node scripts/factory/reference-repositories.mjs observe \
-  --repository MediaNoxLabs/oxid --path /absolute/path/to/oxid
+  --repository betsudo/oxid --path /absolute/path/to/oxid
 ```
 
 The worker may read only the recorded revisions and must return source
 repository, exact SHA, source paths, and license/provenance evidence in the
 handoff. The supervisor repeats the observation after the worker and stops if
 the remote, exact SHA, or status changed, or if source-path/provenance evidence
-is missing. `MediaNoxLabs/midnight-identity` remains the sole mutation target.
+is missing. `betsudo/midnight-identity` remains the sole mutation target.

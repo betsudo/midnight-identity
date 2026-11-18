@@ -158,6 +158,9 @@ test("bootstrap and hooks are tracked executable entrypoints", async () => {
   assert.match(shell, /factory = pkgs\.mkShell/u);
   assert.match(shell, /pi = pkgs\.mkShell[\s\S]*pkgs\.pi-coding-agent[\s\S]*factoryPackages/u);
   assert.match(bootstrap, /run_pinned \.#pi bash -c/u);
+  assert.match(bootstrap, /exec pi --exclude-tools taskflow "\$@"/u);
+  const gitignore = await readFile(path.join(root, ".gitignore"), "utf8");
+  assert.match(gitignore, /^\.pi\/taskflows\/runs\/$/mu);
   for (const hook of ["commit-msg", "pre-commit", "pre-push"]) {
     const wrapper = await readFile(path.join(root, ".githooks", hook), "utf8");
     assert.match(wrapper, new RegExp(`bootstrap\\.sh" --hook ${hook}`, "u"));

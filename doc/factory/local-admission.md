@@ -81,5 +81,14 @@ CI` aggregator remains authoritative.
 ./bootstrap.sh -- COMMAND ...  # one command in the pinned full shell
 ```
 
+The Pi launcher disables the ambient `taskflow` tool. The factory supervisor
+must dispatch its one repository-defined `factory-worker` through
+`pi-subagents`; a globally installed taskflow package must not replace that
+role with one of its built-in read-only agents. The project settings also apply
+a local unload delta for the taskflow extension and skill, while leaving the
+operator's global Pi configuration untouched. Any taskflow run receipts from a
+misconfigured or older session are ignored under `.pi/taskflows/runs/` so they
+cannot make issue-worktree admission appear dirty.
+
 Restart Pi after changing `.pi/`, `.devloops`, or factory runtime policy; a
 running process retains its loaded configuration.

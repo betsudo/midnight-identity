@@ -19,12 +19,20 @@ test("Pi settings and delivery profiles enforce bounded exact-pinned operation",
     readFile(path.join(root, ".pi", "subagent-policy.json"), "utf8").then(JSON.parse),
   ]);
   assert.equal(settings.defaultProvider, "openai-codex");
-  assert.equal(settings.defaultModel, "gpt-5.5");
+  assert.equal(settings.defaultModel, "gpt-6.1-sol");
   assert.equal(settings.defaultThinkingLevel, "medium");
   assert.deepEqual(settings.packages, [
-    { source: "npm:dev-loops@1.0.2", extensions: [] }, "npm:pi-subagents@0.34.0", "npm:typebox@1.3.9",
+    { source: "npm:dev-loops@1.0.2", extensions: [] },
+    {
+      source: "npm:pi-taskflow@0.2.10",
+      autoload: false,
+      extensions: ["-dist/index.js"],
+      skills: ["!skills/**"],
+    },
+    "npm:pi-subagents@0.35.0",
+    "npm:typebox@1.3.9",
   ]);
-  assert.equal(settings.subagents.defaultModel, "openai-codex/gpt-5.5");
+  assert.equal(settings.subagents.defaultModel, "openai-codex/gpt-6.1-sol");
   assert.equal(settings.subagents.defaultThinking, "medium");
   assert.equal(settings.retry.maxRetries, 1);
   assert.equal(settings.retry.provider.maxRetries, 0);
@@ -56,9 +64,9 @@ test("Pi settings and delivery profiles enforce bounded exact-pinned operation",
 test("extraction policy is machine-readable and fails closed around consumer provenance", async () => {
   const policy = await readFile(path.join(root, ".pi", "extraction-policy.json"), "utf8").then(JSON.parse);
   assert.deepEqual(validateExtractionPolicy(policy), []);
-  assert.equal(policy.mutationTarget.repository, "MediaNoxLabs/midnight-identity");
+  assert.equal(policy.mutationTarget.repository, "betsudo/midnight-identity");
   assert.deepEqual(policy.referenceRepositories.map(({ repository }) => repository), [
-    "MediaNoxLabs/oxid", "input-output-hk/lace-id-portal",
+    "betsudo/oxid", "input-output-hk/lace-id-portal",
   ]);
   const portal = policy.referenceRepositories.find(({ repository }) => repository === "input-output-hk/lace-id-portal");
   assert.equal(portal.allowedRemote, "https://github.com/input-output-hk/lace-id-portal.git");
@@ -72,7 +80,7 @@ test("extraction policy is machine-readable and fails closed around consumer pro
       "licenseProvenance", "beforeStatus", "afterStatus",
     ]) assert.ok(reference.requiredEvidence.includes(field), `${reference.repository}: ${field}`);
   }
-  assert.ok(validateExtractionPolicy({ ...policy, mutationTarget: { repository: "MediaNoxLabs/oxid" } }).length > 0);
+  assert.ok(validateExtractionPolicy({ ...policy, mutationTarget: { repository: "betsudo/oxid" } }).length > 0);
   assert.ok(validateExtractionPolicy({
     ...policy,
     referenceRepositories: policy.referenceRepositories.map((entry, index) => index === 0 ? { ...entry, access: "write" } : entry),
@@ -90,7 +98,8 @@ test("Pi package pin rationale is based on package-source ABI evidence", async (
   assert.match(documentation, /pi-subagents@0\.34\.0/u);
   assert.match(documentation, /pi-subagents@0\.35\.0/u);
   assert.match(documentation, /@earendil-works\/pi-ai\/compat/u);
-  assert.match(documentation, /Pi 0\.75\.4 does not provide/u);
+  assert.match(documentation, /Pi 1\.0\.2/u);
+  assert.match(documentation, /wildcard peer dependencies/u);
   assert.match(documentation, /tracked-extension startup smoke before final approval/u);
   assert.doesNotMatch(documentation, /runtime compatible because .*bootstrap\.sh --pi --version/iu);
 });
@@ -102,11 +111,17 @@ test("supervisor owns delegation and the worker cannot create nested agents", as
   ]);
   assert.match(supervisor, /tools: .*subagent/u);
   assert.match(supervisor, /exactly one `factory-worker`/u);
+  assert.match(supervisor, /`subagent` tool with `agent: "factory-worker"`/u);
+  assert.match(supervisor, /stop instead of substituting/u);
   assert.match(supervisor, /filter status,\s+summary, duplicate, and stale automated noise/u);
   assert.match(supervisor, /Acceptance, correctness,\s+security, provenance, required-test, and CI findings are same-PR fixes/u);
   assert.match(supervisor, /Never\s+claim readiness while any review thread remains unresolved/u);
   assert.doesNotMatch(worker.split("---", 3)[1], /\bsubagent\b/u);
   assert.match(worker, /maxSubagentDepth: 0/u);
+  assert.match(worker, /model: "openai-codex\/gpt-6\.1-sol"/u);
+  assert.match(worker, /thinking: medium/u);
+  assert.match(worker, /acceptanceRole: writer/u);
+  assert.match(worker, /tools: .*edit, write/u);
 });
 
 test("the constitution stays concise and protects repository boundaries", async () => {
