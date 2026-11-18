@@ -47,7 +47,7 @@ trap 'rm -rf "$scratch"' EXIT
 mkdir -p "$scratch/src"
 cat > "$scratch/Cargo.toml" <<EOF
 [package]
-name = "midnight-did-git-consumer"
+name = "midnight-identity-git-consumer"
 version = "0.0.0"
 edition = "2024"
 rust-version = "1.99"
@@ -55,6 +55,11 @@ publish = false
 
 [dependencies]
 midnight-did-runtime = { git = "$repository_url", rev = "$revision", features = ["ledger-transaction"] }
+midnight-vc-did-binding = { git = "$repository_url", rev = "$revision" }
+midnight-vc-domain = { git = "$repository_url", rev = "$revision" }
+midnight-vc-families = { git = "$repository_url", rev = "$revision", features = ["digital-passport"] }
+midnight-vc-proof = { git = "$repository_url", rev = "$revision" }
+midnight-vc-runtime = { git = "$repository_url", rev = "$revision" }
 EOF
 printf 'fn main() {}\n' > "$scratch/src/main.rs"
 
@@ -99,6 +104,33 @@ assert_single_source() {
 }
 
 assert_single_source midnight-compact-runtime betsudo/compact "$compact_revision"
+
+assert_candidate_package() {
+  local package=$1
+  local total matching
+  total=$(jq --arg package "$package" '[.packages[] | select(.name == $package)] | length' "$metadata")
+  matching=$(jq \
+    --arg package "$package" \
+    --arg revision "$revision" \
+    '[.packages[] | select(.name == $package and (.source // "" | contains($revision)))] | length' \
+    "$metadata")
+  if [[ "$total" != 1 || "$matching" != 1 ]]; then
+    echo "$package did not resolve exactly once from candidate revision $revision" >&2
+    jq --arg package "$package" '.packages[] | select(.name == $package) | {name, version, source}' "$metadata" >&2
+    exit 1
+  fi
+}
+
+for package in \
+  midnight-did-runtime \
+  midnight-vc-did-binding \
+  midnight-vc-domain \
+  midnight-vc-families \
+  midnight-vc-proof \
+  midnight-vc-runtime
+do
+  assert_candidate_package "$package"
+done
 
 assert_version() {
   local package=$1 expected_version=$2
