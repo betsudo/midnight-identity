@@ -40,17 +40,21 @@ fn fixture_did() -> String {
 /// fixture address and `null` for everything else (same shape as the
 /// `routes.rs` mock).
 async fn spawn_mock_indexer() -> String {
+    spawn_indexer_at(fixture_addr()).await
+}
+
+async fn spawn_indexer_at(address: String) -> String {
     async fn graphql(State(addr): State<String>, Json(body): Json<Value>) -> Json<Value> {
         let requested = body["variables"]["address"].as_str().unwrap_or_default();
         if requested.eq_ignore_ascii_case(&addr) {
-            Json(json!({"data": {"contractAction": {"state": STATE_HEX.trim()}}}))
+            Json(json!({"data": {"contractAction": {"address": addr, "state": STATE_HEX.trim()}}}))
         } else {
             Json(json!({"data": {"contractAction": null}}))
         }
     }
     let router = Router::new()
         .route("/api/v4/graphql", post(graphql))
-        .with_state(fixture_addr());
+        .with_state(address);
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
     let port = listener.local_addr().unwrap().port();
     tokio::spawn(async move {
@@ -61,7 +65,7 @@ async fn spawn_mock_indexer() -> String {
 
 async fn spawn_mismatched_indexer() -> String {
     async fn graphql() -> Json<Value> {
-        Json(json!({"data": {"contractAction": {"state": STATE_HEX.trim()}}}))
+        Json(json!({"data": {"contractAction": {"address": fixture_addr(), "state": STATE_HEX.trim()}}}))
     }
     let router = Router::new().route("/api/v4/graphql", post(graphql));
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
@@ -151,7 +155,7 @@ async fn zero_timeout_is_internal_error() {
 }
 
 #[tokio::test]
-async fn indexed_contract_id_must_match_requested_did() {
+async fn indexer_action_address_must_match_requested_did() {
     let service = service_with(ResolverConfig {
         indexer_url: spawn_mismatched_indexer().await,
         ..ResolverConfig::default()
@@ -160,8 +164,27 @@ async fn indexed_contract_id_must_match_requested_did() {
     let err = service.resolve(&requested, None).await.unwrap_err();
     assert_eq!(err.code, ResolutionErrorCode::InternalError);
     assert!(
-        err.detail.contains("does not match requested DID address"),
+        err.detail.contains("does not match requested address"),
         "got {}",
         err.detail
     );
+}
+
+#[tokio::test]
+async fn zero_stored_id_resolves_at_the_indexed_nonzero_contract_address() {
+    assert_eq!(fixture_addr(), "00".repeat(32), "fixture has the RC1 zero stored ID");
+    let address = "ab".repeat(32);
+    let service = ResolverService::new(ResolverConfig {
+        indexer_url: spawn_indexer_at(address.clone()).await,
+        ..ResolverConfig::default()
+    });
+    let did = format!("did:midnight:undeployed:{address}");
+    let result = service
+        .resolve(&did, None)
+        .await
+        .expect("zero stored ID resolves via matching action");
+    assert_eq!(result.did_document.id.as_str(), did);
+    let methods = result.did_document.verification_method.expect("fixture methods");
+    assert_eq!(methods.len(), 1);
+    assert_eq!(methods[0].id().as_str(), format!("{did}#key-1"));
 }
