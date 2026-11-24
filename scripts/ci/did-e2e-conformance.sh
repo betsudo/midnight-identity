@@ -34,6 +34,9 @@ fi
 "${pnpm_cmd[@]}" --dir "$ts_root" --filter @midnight-ntwrk/midnight-did-jubjub-schnorr build
 "${pnpm_cmd[@]}" --dir "$ts_root" --filter @midnight-ntwrk/midnight-did-contract build:prepared
 "${pnpm_cmd[@]}" --dir "$ts_root" --filter @midnight-ntwrk/midnight-did build
+"${pnpm_cmd[@]}" --dir "$ts_root" --filter @midnight-ntwrk/midnight-did-domain test:ci
+"${pnpm_cmd[@]}" --dir "$ts_root" --filter @midnight-ntwrk/midnight-did test:ci
+"${pnpm_cmd[@]}" --dir "$ts_root" --filter @midnight-ntwrk/midnight-did-api test:ci
 node "$repo_root/scripts/ci/did-cross-language-conformance.mjs"
 
 if [[ "$run_rust" == true ]]; then

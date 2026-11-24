@@ -28,6 +28,7 @@ use serde_json::Value as JsonValue;
 use thiserror::Error;
 
 use crate::crypto_codecs::{CodecError, decode_base64url_bytes, decode_jubjub_jwk_coordinate};
+use crate::did_url::{DidUrlResolutionOptions, resolve_did_url_reference};
 use crate::uri::normalize_uri_string;
 
 // ---------------------------------------------------------------------------
@@ -255,7 +256,8 @@ pub struct RelativeUrl(String);
 #[serde(transparent)]
 pub struct DidString(String);
 
-/// DID Key ID — either a full DID URL `did:...#frag` or a relative `#frag` reference.
+/// DID verification-method identifier: a fragment/path reference or an
+/// absolute DID/URI carrying a fragment.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]
 #[serde(transparent)]
 pub struct DidKeyId(String);
@@ -301,6 +303,10 @@ fn is_relative_reference(value: &str) -> bool {
         .is_ok()
 }
 
+fn is_absolute_uri(value: &str) -> bool {
+    has_uri_scheme(value) && url::Url::parse(value).is_ok()
+}
+
 fn is_key_fragment(value: &str) -> bool {
     if value.is_empty() {
         return false;
@@ -311,16 +317,22 @@ fn is_key_fragment(value: &str) -> bool {
 }
 
 fn extract_key_fragment(value: &str) -> &str {
-    if let Some(rest) = value.strip_prefix('#') {
-        return rest;
+    value.find('#').map_or("", |index| &value[index + 1..])
+}
+
+fn is_path_verification_method_reference(value: &str) -> bool {
+    if value.contains('#') {
+        return false;
     }
-    if value.starts_with("did:") {
-        return match value.find('#') {
-            Some(idx) => &value[idx + 1..],
-            None => "",
-        };
+    if value.starts_with('/') || value.starts_with('.') {
+        return is_relative_reference(value);
+    }
+    if !value.starts_with("did:") {
+        return false;
     }
     value
+        .find(['/', '?', '#'])
+        .is_some_and(|boundary| value.as_bytes()[boundary] == b'/')
 }
 
 fn is_did_url(value: &str) -> bool {
@@ -338,11 +350,12 @@ fn is_did_string(value: &str) -> bool {
 }
 
 fn is_did_key_id(value: &str) -> bool {
-    let union = is_did_url(value) || is_relative_reference(value);
+    let union = is_did_url(value) || is_absolute_uri(value) || is_relative_reference(value);
     if !union {
         return false;
     }
-    is_key_fragment(extract_key_fragment(value))
+    let fragment = extract_key_fragment(value);
+    (!fragment.is_empty() && is_key_fragment(fragment)) || is_path_verification_method_reference(value)
 }
 
 impl DidUrl {
@@ -444,9 +457,9 @@ impl DidKeyId {
     ///
     /// # Errors
     ///
-    /// Returns a [`ValidationError`] when the value is neither a DID URL
-    /// nor a relative reference, or when its fragment portion is missing
-    /// or contains characters outside `[A-Za-z0-9.-_:%]`.
+    /// Returns a [`ValidationError`] when the value is neither an accepted
+    /// absolute URI nor a relative reference, or when it has neither a valid
+    /// fragment nor the historical path-only shape accepted by TypeScript.
     pub fn parse(value: impl Into<String>) -> Result<Self, ValidationError> {
         let s = value.into();
         validate_bounded_text(
@@ -1261,7 +1274,7 @@ fn validate_service_endpoint_with_budget(endpoint: &ServiceEndpoint, nodes: &mut
 
 impl Service {
     /// Construct a `Service` from raw inputs, running the W3C
-    /// structural validation (id is a DID URL or relative reference,
+    /// structural validation (id is an absolute URI or relative reference,
     /// type is non-empty, endpoint is well-formed) at the gate and
     /// normalising the endpoint shape as part of construction.
     ///
@@ -1270,8 +1283,8 @@ impl Service {
     ///
     /// # Errors
     ///
-    /// Returns a [`ValidationError`] when `id` is neither a DID URL nor a
-    /// relative reference, or when `type_` is empty (single empty string
+    /// Returns a [`ValidationError`] when `id` is neither an absolute URI nor
+    /// a relative reference, or when `type_` is empty (single empty string
     /// or empty array).
     pub fn new(input: NewService) -> Result<Self, ValidationError> {
         let mut svc = Self {
@@ -1304,19 +1317,19 @@ impl Service {
     ///
     /// # Errors
     ///
-    /// Returns a [`ValidationError`] when the `id` is neither a DID URL
+    /// Returns a [`ValidationError`] when the `id` is neither an absolute URI
     /// nor a relative reference, or when `type` is empty.
     pub fn validate(&self) -> Result<(), ValidationError> {
         let mut issues = Vec::new();
         collect_bounded_text_issue(
             &self.id,
             MAX_DID_STRING_BYTES,
-            "Service id must be a DID URL or relative reference",
+            "Service id must be a DID URL, URI, or relative reference",
             &mut issues,
         );
-        if !is_did_url(&self.id) && !is_relative_reference(&self.id) {
+        if !is_did_url(&self.id) && !is_absolute_uri(&self.id) && !is_relative_reference(&self.id) {
             issues.push(ValidationIssue::new(
-                "Service id must be a DID URL or relative reference",
+                "Service id must be a DID URL, URI, or relative reference",
             ));
         }
         match &self.type_ {
@@ -1634,13 +1647,16 @@ impl DidDocument {
         let mut seen_vm_ids: HashMap<String, usize> = HashMap::new();
         let did = normalized.id.as_str();
         let canonicalize = |value: &str| -> String {
-            if value.starts_with("did:") {
-                value.to_owned()
-            } else if let Some(rest) = value.strip_prefix('#') {
-                format!("{did}#{rest}")
-            } else {
-                format!("{did}#{value}")
-            }
+            resolve_did_url_reference(
+                value,
+                did,
+                DidUrlResolutionOptions {
+                    allow_external_did: true,
+                    allow_external_url: true,
+                    ..Default::default()
+                },
+            )
+            .expect("validated DID document references must resolve")
         };
         for (index, vm) in vms.iter().enumerate() {
             let canonical = canonicalize(vm.id.as_str());
@@ -1698,7 +1714,7 @@ impl DidDocument {
             }
             let mut seen_ids = HashSet::new();
             for (index, service) in services.iter().enumerate() {
-                if !seen_ids.insert(service.id.clone()) {
+                if !seen_ids.insert(canonicalize(&service.id)) {
                     issues.push(ValidationIssue::at(
                         "service ids must be unique",
                         vec!["service".into(), index.to_string(), "id".into()],
