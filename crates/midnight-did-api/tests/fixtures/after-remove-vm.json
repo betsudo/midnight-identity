@@ -5,13 +5,11 @@
       "https://w3id.org/security/jwk/v1"
     ],
     "controller": "did:midnight:undeployed:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
-    "id": "did:midnight:undeployed:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
-    "alsoKnownAs": null,
-    "service": null
+    "id": "did:midnight:undeployed:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
   },
   "didDocumentMetadata": {
     "created": "2023-11-14T22:13:20Z",
     "updated": "2023-11-14T23:15:00Z",
-    "versionId": "5"
+    "versionId": "6"
   }
 }

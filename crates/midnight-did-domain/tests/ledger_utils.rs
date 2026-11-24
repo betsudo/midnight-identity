@@ -22,8 +22,8 @@
 
 use midnight_did_domain::did_document::{ServiceEndpoint, ServiceEndpointArrayEntry, ServiceType};
 use midnight_did_domain::ledger_utils::{
-    BoundIdField, LedgerUtilsError, assert_absolute_uri, normalize_bound_fragment_id, normalize_fragment_id,
-    service_endpoint_to_ledger, service_type_to_ledger,
+    BoundIdField, LedgerUtilsError, assert_absolute_uri, normalize_bound_did_url, normalize_bound_fragment_id,
+    normalize_fragment_id, service_endpoint_to_ledger, service_type_to_ledger,
 };
 
 const DID: &str = "did:midnight:devnet:abcd";
@@ -48,11 +48,14 @@ fn bound_fragment_rejects_empty_input() {
     let err = normalize_bound_fragment_id("   ", BoundIdField::ServiceId, DID).unwrap_err();
     assert_eq!(
         err,
-        LedgerUtilsError::Empty {
+        LedgerUtilsError::EmptyFragment {
             field: "service.id".into()
         }
     );
-    assert_eq!(format!("{err}"), "service.id must not be empty");
+    assert_eq!(
+        format!("{err}"),
+        "service.id DID URL must include a non-empty fragment identifier"
+    );
 }
 
 #[test]
@@ -106,13 +109,7 @@ fn bound_fragment_rejects_subject_mismatch_with_expected_did_in_message() {
 #[test]
 fn bound_fragment_rejects_absolute_uri_scheme() {
     let err = normalize_bound_fragment_id("https://example.com/x", BoundIdField::ShortServiceId, DID).unwrap_err();
-    assert_eq!(
-        err,
-        LedgerUtilsError::NotARelativeOrDidUrl {
-            field: "serviceId".into()
-        }
-    );
-    assert_eq!(format!("{err}"), "serviceId must be a DID URL or relative reference");
+    assert!(matches!(err, LedgerUtilsError::EmptyFragment { .. }));
 }
 
 // ---- normalize_bound_fragment_id: accepted shapes ----------------------
@@ -120,28 +117,28 @@ fn bound_fragment_rejects_absolute_uri_scheme() {
 #[test]
 fn bound_fragment_passes_through_leading_hash() {
     let out = normalize_bound_fragment_id("#key-1", BoundIdField::VerificationMethodId, DID).unwrap();
-    assert_eq!(out, "#key-1");
+    assert_eq!(out, format!("{DID}#key-1"));
 }
 
 #[test]
-fn bound_fragment_reduces_matching_did_url() {
+fn bound_fragment_preserves_matching_did_url() {
     let out = normalize_bound_fragment_id(&format!("{DID}#auth-key"), BoundIdField::MethodId, DID).unwrap();
-    assert_eq!(out, "#auth-key");
+    assert_eq!(out, format!("{DID}#auth-key"));
 }
 
 #[test]
-fn bound_fragment_prefixes_path_like_relative_references() {
+fn bound_fragment_resolves_path_like_relative_references_without_loss() {
     assert_eq!(
-        normalize_bound_fragment_id("/path", BoundIdField::ServiceId, DID).unwrap(),
-        "#/path"
+        normalize_bound_fragment_id("/path#key", BoundIdField::ServiceId, DID).unwrap(),
+        format!("{DID}/path#key")
     );
     assert_eq!(
-        normalize_bound_fragment_id("./rel", BoundIdField::ServiceId, DID).unwrap(),
-        "#./rel"
+        normalize_bound_fragment_id("./rel#key", BoundIdField::ServiceId, DID).unwrap(),
+        format!("{DID}/rel#key")
     );
     assert_eq!(
-        normalize_bound_fragment_id("?query", BoundIdField::ServiceId, DID).unwrap(),
-        "#?query"
+        normalize_bound_fragment_id("?query#key", BoundIdField::ServiceId, DID).unwrap(),
+        format!("{DID}?query#key")
     );
 }
 
@@ -149,7 +146,23 @@ fn bound_fragment_prefixes_path_like_relative_references() {
 fn bound_fragment_prefixes_bare_names() {
     assert_eq!(
         normalize_bound_fragment_id("key-1", BoundIdField::ServiceId, DID).unwrap(),
-        "#key-1"
+        format!("{DID}#key-1")
+    );
+}
+
+#[test]
+fn bound_did_url_preserves_paths_queries_and_external_service_urls() {
+    assert_eq!(
+        normalize_bound_did_url("/services/a#key-1", BoundIdField::ServiceId, DID).unwrap(),
+        format!("{DID}/services/a#key-1")
+    );
+    assert_eq!(
+        normalize_bound_did_url("?service=messaging", BoundIdField::ServiceId, DID).unwrap(),
+        format!("{DID}?service=messaging")
+    );
+    assert_eq!(
+        normalize_bound_did_url("https://example.com/service", BoundIdField::ServiceId, DID).unwrap(),
+        "https://example.com/service"
     );
 }
 

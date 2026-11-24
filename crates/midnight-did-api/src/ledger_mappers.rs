@@ -38,7 +38,7 @@ use crate::contract::{
     LedgerVerificationMethodRelation,
 };
 use crate::error::ApiError;
-use crate::subject::normalize_bound_fragment_id_for;
+use crate::subject::{normalize_bound_did_url_for, normalize_bound_fragment_id_for};
 
 /// Schnorr-Jubjub verification method as seen by the API layer. Mirrors
 /// `SchnorrJubjubVerificationMethod` from `packages/api/src/types.ts`.
@@ -222,7 +222,7 @@ pub fn schnorr_jubjub_verification_method_to_ledger<B: Backend>(
 pub fn service_to_ledger<B: Backend>(contract: &Contract<B>, service: &Service) -> Result<LedgerService, ApiError> {
     let endpoint = service_endpoint_to_ledger(service.service_endpoint().clone());
     let typ = service_type_to_ledger(service.type_())?;
-    let id = normalize_bound_fragment_id_for(contract, service.id(), BoundIdField::ServiceId)?;
+    let id = normalize_bound_did_url_for(contract, service.id(), BoundIdField::ServiceId)?;
     Ok(LedgerService {
         id,
         typ,
@@ -315,7 +315,7 @@ mod tests {
         })
         .expect("valid VM fixture");
         let ledger = verification_method_to_ledger(&contract, &vm).expect("map ok");
-        assert_eq!(ledger.id, "#key-1");
+        assert_eq!(ledger.id, format!("did:midnight:testnet:{ADDR}#key-1"));
         assert_eq!(ledger.typ, VerificationMethodType::JsonWebKey);
         assert_eq!(ledger.public_key_jwk.x, coord);
         assert_eq!(ledger.public_key_jwk.y, coord);
@@ -375,7 +375,7 @@ mod tests {
         })
         .expect("sample Service is valid");
         let ledger = service_to_ledger(&contract, &svc).expect("map ok");
-        assert_eq!(ledger.id, "#svc-1");
+        assert_eq!(ledger.id, format!("did:midnight:testnet:{ADDR}/svc-1"));
         assert_eq!(ledger.typ, "LinkedDomains");
         assert!(ledger.service_endpoint.contains("example.com"));
     }

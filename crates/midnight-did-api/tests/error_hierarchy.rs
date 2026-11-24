@@ -155,6 +155,9 @@ fn callers_can_pattern_match_on_narrow_type() {
         match e {
             VerificationError::RelationAlreadyContains { .. } => "duplicate",
             VerificationError::RelationMissing { .. } => "missing",
+            VerificationError::MethodAlreadyExists { .. } => "method-duplicate",
+            VerificationError::MethodMissing { .. } => "method-missing",
+            VerificationError::MethodReferenced { .. } => "method-referenced",
         }
     }
     let err = VerificationError::RelationMissing {

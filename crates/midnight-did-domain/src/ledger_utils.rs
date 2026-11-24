@@ -23,6 +23,7 @@
 use thiserror::Error;
 
 use crate::did_document::{ServiceEndpoint, ServiceType, normalize_service_endpoint};
+use crate::did_url::{DidUrlResolutionError, DidUrlResolutionOptions, resolve_did_url_reference};
 
 /// Which ledger field a value is bound to. Used solely for error messages so
 /// callers can distinguish failures between, e.g., `verificationMethod.id`
@@ -82,6 +83,12 @@ pub enum LedgerUtilsError {
         /// Expected DID subject.
         expected: String,
     },
+    /// A service id resolved to the bare DID rather than a service resource.
+    #[error("{field} must identify a service")]
+    DoesNotIdentifyService {
+        /// Field name.
+        field: String,
+    },
     /// Service-type entries were not unique.
     #[error("service type entries must be unique")]
     DuplicateServiceTypeEntries,
@@ -102,28 +109,6 @@ pub enum LedgerUtilsError {
     },
 }
 
-const URI_SCHEME_PREFIX_CHARS: &[u8] = b"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
-const URI_SCHEME_INNER_CHARS: &[u8] = b"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789+.-";
-
-fn has_uri_scheme(value: &str) -> bool {
-    let bytes = value.as_bytes();
-    if bytes.is_empty() {
-        return false;
-    }
-    if !URI_SCHEME_PREFIX_CHARS.contains(&bytes[0]) {
-        return false;
-    }
-    for (idx, byte) in bytes.iter().enumerate().skip(1) {
-        if *byte == b':' {
-            return idx > 0;
-        }
-        if !URI_SCHEME_INNER_CHARS.contains(byte) {
-            return false;
-        }
-    }
-    false
-}
-
 /// Normalize any fragment-id-shaped string to the leading-`#` form. Bare
 /// fragments are prefixed, DID URLs are reduced to their fragment portion.
 #[must_use]
@@ -132,15 +117,76 @@ pub fn normalize_fragment_id(value: &str) -> String {
     if trimmed.starts_with('#') {
         return trimmed.to_owned();
     }
-    if let Some(idx) = trimmed.find('#') {
+    if let Some(idx) = trimmed.rfind('#') {
         return format!("#{}", &trimmed[idx + 1..]);
     }
     format!("#{trimmed}")
 }
 
-/// Normalize a fragment id that is bound to a specific DID subject. Rejects
-/// inputs whose DID subject does not match `expected_did_subject`, and the
-/// other failure modes called out by [`LedgerUtilsError`].
+/// Resolve an identifier against a specific DID subject without dropping its
+/// path, query, or fragment components.
+///
+/// This is the Rust equivalent of TypeScript `normalizeBoundDIDURL`.
+/// Service fields may use non-DID absolute URLs but foreign DID subjects are
+/// rejected.
+///
+/// # Errors
+///
+/// Returns a field-specific [`LedgerUtilsError`] for malformed, external, or
+/// empty references.
+pub fn normalize_bound_did_url(
+    value: &str,
+    field: BoundIdField,
+    expected_did_subject: &str,
+) -> Result<String, LedgerUtilsError> {
+    let trimmed = value.trim();
+    if trimmed.is_empty() {
+        return Err(LedgerUtilsError::Empty {
+            field: field.label().into(),
+        });
+    }
+    if trimmed.ends_with('#') {
+        return Err(LedgerUtilsError::EmptyFragment {
+            field: field.label().into(),
+        });
+    }
+    let service_field = matches!(field, BoundIdField::ServiceId | BoundIdField::ShortServiceId);
+    let resolved = resolve_did_url_reference(
+        trimmed,
+        expected_did_subject,
+        DidUrlResolutionOptions {
+            allow_external_url: service_field,
+            case_insensitive_did_subject: true,
+            ..DidUrlResolutionOptions::default()
+        },
+    )
+    .map_err(|error| match error {
+        DidUrlResolutionError::Empty => LedgerUtilsError::Empty {
+            field: field.label().into(),
+        },
+        DidUrlResolutionError::SubjectMismatch { .. } => LedgerUtilsError::SubjectMismatch {
+            field: field.label().into(),
+            expected: expected_did_subject.into(),
+        },
+        DidUrlResolutionError::NetworkPath
+        | DidUrlResolutionError::ExternalUrl
+        | DidUrlResolutionError::InvalidAbsoluteUrl => LedgerUtilsError::NotARelativeOrDidUrl {
+            field: field.label().into(),
+        },
+    })?;
+    if service_field && resolved == expected_did_subject {
+        return Err(LedgerUtilsError::DoesNotIdentifyService {
+            field: field.label().into(),
+        });
+    }
+    Ok(resolved)
+}
+
+/// Normalize a fragment-bearing identifier that is bound to a specific DID
+/// subject while preserving its complete canonical absolute DID URL.
+///
+/// The historical function name is retained for compatibility with the
+/// TypeScript API. It no longer reduces identifiers to `#fragment`.
 ///
 /// # Errors
 ///
@@ -156,50 +202,32 @@ pub fn normalize_bound_fragment_id(
     expected_did_subject: &str,
 ) -> Result<String, LedgerUtilsError> {
     let trimmed = value.trim();
-    if trimmed.is_empty() {
-        return Err(LedgerUtilsError::Empty {
+    let bare_label = !trimmed.contains('#')
+        && !trimmed.starts_with('/')
+        && !trimmed.starts_with('.')
+        && !trimmed.starts_with('?')
+        && !super::did_url::has_uri_scheme_for_ledger_utils(trimmed);
+    let reference = if bare_label {
+        format!("#{trimmed}")
+    } else {
+        trimmed.to_owned()
+    };
+    let resolved = normalize_bound_did_url(&reference, field, expected_did_subject)?;
+    if !resolved.contains('#') {
+        return Err(LedgerUtilsError::EmptyFragment {
             field: field.label().into(),
         });
     }
-    if trimmed.starts_with("//") {
-        return Err(LedgerUtilsError::NotARelativeOrDidUrl {
+    if !resolved.starts_with(&format!("{expected_did_subject}#"))
+        && !resolved.starts_with(&format!("{expected_did_subject}/"))
+        && !resolved.starts_with(&format!("{expected_did_subject}?"))
+    {
+        return Err(LedgerUtilsError::SubjectMismatch {
             field: field.label().into(),
+            expected: expected_did_subject.into(),
         });
     }
-    if trimmed.starts_with('#') {
-        return Ok(trimmed.to_owned());
-    }
-
-    let hash_index = trimmed.find('#');
-    if trimmed.starts_with("did:") {
-        match hash_index {
-            Some(idx) if idx > 0 && idx < trimmed.len() - 1 => {
-                let did_subject = &trimmed[..idx];
-                if did_subject != expected_did_subject {
-                    return Err(LedgerUtilsError::SubjectMismatch {
-                        field: field.label().into(),
-                        expected: expected_did_subject.into(),
-                    });
-                }
-                return Ok(format!("#{}", &trimmed[idx + 1..]));
-            }
-            _ => {
-                return Err(LedgerUtilsError::EmptyFragment {
-                    field: field.label().into(),
-                });
-            }
-        }
-    }
-
-    if trimmed.starts_with('/') || trimmed.starts_with('.') || trimmed.starts_with('?') {
-        return Ok(format!("#{trimmed}"));
-    }
-    if has_uri_scheme(trimmed) {
-        return Err(LedgerUtilsError::NotARelativeOrDidUrl {
-            field: field.label().into(),
-        });
-    }
-    Ok(normalize_fragment_id(trimmed))
+    Ok(resolved)
 }
 
 /// Encode the polymorphic service `type` property into the single-string
@@ -307,7 +335,7 @@ mod tests {
         let did = "did:midnight:devnet:abcd";
         let frag =
             normalize_bound_fragment_id(&format!("{did}#key-1"), BoundIdField::VerificationMethodId, did).unwrap();
-        assert_eq!(frag, "#key-1");
+        assert_eq!(frag, format!("{did}#key-1"));
     }
 
     #[test]

@@ -31,7 +31,7 @@
 //! type directly without handling unrelated variants.
 
 use midnight_did_domain::crypto_codecs::CodecError;
-use midnight_did_domain::did_document::ValidationError;
+use midnight_did_domain::did_document::{ValidationError, VerificationMethodRelation};
 use midnight_did_domain::ledger_utils::LedgerUtilsError;
 use midnight_did_method::midnight_did::MidnightDidError;
 use thiserror::Error;
@@ -59,6 +59,31 @@ pub enum ContractError {
 /// / update / relation-management.
 #[derive(Debug, Error)]
 pub enum VerificationError {
+    /// A verification method with the same canonical id already exists in
+    /// either physical ledger map.
+    #[error("verification method {method_id} already exists")]
+    MethodAlreadyExists {
+        /// Canonical fragment id.
+        method_id: String,
+    },
+
+    /// The requested verification method does not exist in the expected
+    /// physical ledger map.
+    #[error("verification method {method_id} does not exist")]
+    MethodMissing {
+        /// Canonical fragment id.
+        method_id: String,
+    },
+
+    /// One or more DID Core relationships still reference the method.
+    #[error("verification method {method_id} is still referenced by verification relationships: {relations:?}")]
+    MethodReferenced {
+        /// Canonical fragment id.
+        method_id: String,
+        /// Relationships that must be removed explicitly first.
+        relations: Vec<VerificationMethodRelation>,
+    },
+
     /// A relation already contains a verification method that callers
     /// attempted to add.
     #[error("relation {relation} already contains verification method {method_id}")]

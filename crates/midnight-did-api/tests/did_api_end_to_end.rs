@@ -31,9 +31,8 @@
 //! - addAlsoKnownAs adds an entry to the alsoKnownAs set.
 //! - deactivate flips the metadata.
 //!
-//! Three JSON fixtures under `tests/fixtures/` capture the expected DID
-//! Document for "initial", "after rotate", and "after set verification
-//! method" states. The Rust test seeds an equivalent
+//! JSON fixtures under `tests/fixtures/` capture the expected DID Document
+//! across the mutation flow. The Rust test seeds an equivalent
 //! [`DidLedgerSnapshot`] and asserts the resolver output matches the
 //! fixture structurally (via `serde_json::Value` equality so key order is
 //! irrelevant).
@@ -54,7 +53,8 @@ use midnight_did_api::resolution::{ledger_state_to_did_document, ledger_state_to
 use midnight_did_api::service_operations::{add_service, remove_service};
 use midnight_did_api::verification_method_operations::{
     add_schnorr_jubjub_verification_method, add_verification_method, add_verification_method_relation,
-    remove_schnorr_jubjub_verification_method, remove_verification_method, update_verification_method,
+    remove_schnorr_jubjub_verification_method, remove_verification_method, remove_verification_method_relation,
+    update_verification_method,
 };
 use midnight_did_domain::crypto_codecs::encode_base64url;
 use midnight_did_domain::did_document::{
@@ -388,7 +388,7 @@ async fn add_verification_method_records_insert_and_resolves() {
             _ => None,
         })
         .expect("set-vm call recorded");
-    assert_eq!(recorded.id, "#key-1");
+    assert_eq!(recorded.id, format!("{}#key-1", did_subject()));
     assert_eq!(recorded.public_key_jwk.x, coord);
     assert_eq!(recorded.public_key_jwk.y, ""); // ledger y sentinel
 }
@@ -399,7 +399,7 @@ async fn add_verification_method_records_insert_and_resolves() {
 async fn add_then_remove_service_records_expected_calls() {
     let contract = contract_with(MidnightNetwork::Undeployed, initial_ledger());
     let svc = Service::new(NewService {
-        id: "service-1".into(),
+        id: "#service-1".into(),
         type_: ServiceType::One("DIDCommV2".into()),
         service_endpoint: ServiceEndpoint::Array(vec![
             midnight_did_domain::did_document::ServiceEndpointArrayEntry::Uri("https://localhost/didcomm/v2".into()),
@@ -408,13 +408,23 @@ async fn add_then_remove_service_records_expected_calls() {
     })
     .unwrap();
     add_service(&contract, &svc).await.unwrap();
-    remove_service(&contract, "service-1").await.unwrap();
+    let mut with_service = initial_ledger();
+    with_service.services.insert(
+        "#service-1".into(),
+        LedgerService {
+            id: "#service-1".into(),
+            typ: "DIDCommV2".into(),
+            service_endpoint: "[\"https://localhost/didcomm/v2\",\"wss://localhost/didcomm/v2\"]".into(),
+        },
+    );
+    contract.backend.set_snapshot(with_service);
+    remove_service(&contract, "#service-1").await.unwrap();
 
     let calls = contract.backend.recorded_calls();
     assert!(
         calls
             .iter()
-            .any(|c| matches!(c, DidContractCall::SetService { service: s, mutation: _ } if s.id == "#service-1")),
+            .any(|c| matches!(c, DidContractCall::SetService { service: s, mutation: _ } if s.id == format!("{}#service-1", did_subject()))),
         "{calls:?}"
     );
     assert!(
@@ -665,9 +675,8 @@ async fn after_set_vm_update_matches_ts_fixture() {
     assert_eq!(actual, expected);
 }
 
-/// `removeVerificationMethod(id)` — also purges any relations referencing
-/// the method. After removal the document has no `verificationMethod`
-/// array and no relation arrays.
+/// `removeVerificationMethod(id)` — relationships must be removed explicitly
+/// before the method, matching the Ledger 9 TypeScript API.
 #[tokio::test]
 async fn after_remove_vm_matches_ts_fixture() {
     let mut pre = initial_ledger();
@@ -678,11 +687,21 @@ async fn after_remove_vm_matches_ts_fixture() {
     pre.operation_count = 3;
     let contract = contract_with(MidnightNetwork::Undeployed, pre);
 
+    remove_verification_method_relation(&contract, VerificationMethodRelation::Authentication, "#key-1")
+        .await
+        .unwrap();
+    let mut after_relation_removal = initial_ledger();
+    after_relation_removal
+        .verification_methods
+        .insert("#key-1".into(), vm_key_1_ed25519_ledger());
+    after_relation_removal.version = 5;
+    after_relation_removal.operation_count = 4;
+    contract.backend.set_snapshot(after_relation_removal);
     remove_verification_method(&contract, "#key-1").await.unwrap();
 
     let mut post = initial_ledger();
-    post.version = 5;
-    post.operation_count = 5; // relation purge + remove vm
+    post.version = 6;
+    post.operation_count = 5;
     post.updated_ms = 1_700_003_700_000;
     contract.backend.set_snapshot(post);
 
@@ -820,7 +839,7 @@ async fn after_set_service_insert_matches_ts_fixture() {
     let contract = contract_with(MidnightNetwork::Undeployed, initial_ledger());
 
     let svc = Service::new(NewService {
-        id: "svc-1".into(),
+        id: "#svc-1".into(),
         type_: ServiceType::One("DIDCommMessaging".into()),
         service_endpoint: ServiceEndpoint::Uri("https://example.com/didcomm".into()),
     })
@@ -866,7 +885,7 @@ async fn after_remove_service_matches_ts_fixture() {
     pre.operation_count = 1;
     let contract = contract_with(MidnightNetwork::Undeployed, pre);
 
-    remove_service(&contract, "svc-1").await.unwrap();
+    remove_service(&contract, "#svc-1").await.unwrap();
 
     let mut post = initial_ledger();
     post.version = 3;
@@ -881,6 +900,54 @@ async fn after_remove_service_matches_ts_fixture() {
     });
     let expected = load_fixture("after-remove-service.json");
     assert_eq!(actual, expected);
+}
+
+#[test]
+fn resolves_all_did_core_service_endpoint_variations() {
+    let mut state = initial_ledger();
+    state.services.insert(
+        "#uri".into(),
+        LedgerService {
+            id: "#uri".into(),
+            typ: "LinkedDomains".into(),
+            service_endpoint: "\"https://example.com/identity\"".into(),
+        },
+    );
+    state.services.insert(
+        "#object".into(),
+        LedgerService {
+            id: "#object".into(),
+            typ: "DIDCommMessaging".into(),
+            service_endpoint: r#"{"uri":"https://example.com/didcomm","accept":["didcomm/v2"]}"#.into(),
+        },
+    );
+    state.services.insert(
+        "#mixed".into(),
+        LedgerService {
+            id: "#mixed".into(),
+            typ: r#"["LinkedDomains","DIDCommMessaging"]"#.into(),
+            service_endpoint: r#"["https://example.com/one",{"uri":"https://example.com/two"}]"#.into(),
+        },
+    );
+
+    let document = ledger_state_to_did_document(&state, MidnightNetwork::Undeployed, ADDR).expect("document");
+    let services = serde_json::to_value(document.service.expect("services")).expect("service JSON");
+    assert_eq!(services.as_array().expect("array").len(), 3);
+    assert!(
+        services
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|service| { service["serviceEndpoint"] == serde_json::json!("https://example.com/identity") })
+    );
+    assert!(services.as_array().unwrap().iter().any(|service| {
+        service["serviceEndpoint"] == serde_json::json!({"uri":"https://example.com/didcomm","accept":["didcomm/v2"]})
+    }));
+    assert!(services.as_array().unwrap().iter().any(|service| {
+        service["type"] == serde_json::json!(["LinkedDomains", "DIDCommMessaging"])
+            && service["serviceEndpoint"]
+                == serde_json::json!(["https://example.com/one", {"uri":"https://example.com/two"}])
+    }));
 }
 
 // ---------------------------------------------------------------------------

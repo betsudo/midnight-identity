@@ -205,9 +205,10 @@ mod tests {
         };
         apply_patch(&contract, &patch).await.unwrap();
         let calls = contract.backend.recorded_calls();
-        assert_eq!(calls.len(), 2);
+        assert_eq!(calls.len(), 3);
         assert!(matches!(calls[0], DidContractCall::SetAlsoKnownAs { .. }));
-        assert!(matches!(calls[1], DidContractCall::SetService { .. }));
+        assert!(matches!(calls[1], DidContractCall::ReadLedger));
+        assert!(matches!(calls[2], DidContractCall::SetService { .. }));
     }
 
     #[tokio::test]

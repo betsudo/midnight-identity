@@ -1,0 +1,150 @@
+{
+  "sourceRevisions": {
+    "rust": "8456b88c2de636e81a27f7da6ba447145740eaff",
+    "typescript": "750268664278c162e9171406983dc45f24bb5be7"
+  },
+  "network": "undeployed",
+  "contractAddress": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+  "ledgerSnapshot": {
+    "id_hex": "",
+    "active": true,
+    "deactivated": false,
+    "controller_public_key_hex": "0101010101010101010101010101010101010101010101010101010101010101",
+    "version": 5,
+    "operation_count": 4,
+    "contract_version": 1,
+    "created_ms": 1700000000000,
+    "updated_ms": 1700002800000,
+    "also_known_as": ["did:example:portable-holder"],
+    "verification_methods": {
+      "#auth-ed25519": {
+        "id": "#auth-ed25519",
+        "typ": "JsonWebKey",
+        "public_key_jwk": {
+          "kty": "OKP",
+          "crv": "Ed25519",
+          "x": "11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo",
+          "y": ""
+        }
+      },
+      "/keys/delegation#p256": {
+        "id": "/keys/delegation#p256",
+        "typ": "JsonWebKey",
+        "public_key_jwk": {
+          "kty": "EC",
+          "crv": "P-256",
+          "x": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+          "y": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+        }
+      }
+    },
+    "schnorr_jubjub_verification_methods": {
+      "#assert-jubjub": {
+        "id": "#assert-jubjub",
+        "public_key": {
+          "x": "f41c213dc10ced0a582ca81fb354b0aee2cc3530fc294f09190b17cf7096cc10",
+          "y": "ddad992843449a75d5ca306c17a26c6df4547397e7fc409161d0db7016184c1f"
+        }
+      }
+    },
+    "authentication_relation": ["#auth-ed25519"],
+    "assertion_method_relation": ["#assert-jubjub"],
+    "key_agreement_relation": [],
+    "capability_invocation_relation": ["/keys/delegation#p256"],
+    "capability_delegation_relation": [],
+    "services": {
+      "#linked-domain": {
+        "id": "#linked-domain",
+        "typ": "LinkedDomains",
+        "service_endpoint": "\"https://example.com/identity\""
+      },
+      "did:example:other#routing": {
+        "id": "did:example:other#routing",
+        "typ": "DIDCommV2",
+        "service_endpoint": "\"https://relay.example/routing\""
+      }
+    }
+  },
+  "expected": {
+    "didDocument": {
+      "@context": [
+        "https://www.w3.org/ns/did/v1",
+        "https://w3id.org/security/jwk/v1"
+      ],
+      "id": "did:midnight:undeployed:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+      "controller": "did:midnight:undeployed:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+      "verificationMethod": [
+        {
+          "id": "did:midnight:undeployed:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef#auth-ed25519",
+          "type": "JsonWebKey",
+          "controller": "did:midnight:undeployed:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+          "publicKeyJwk": {
+            "kty": "OKP",
+            "crv": "Ed25519",
+            "x": "11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo"
+          }
+        },
+        {
+          "id": "did:midnight:undeployed:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef/keys/delegation#p256",
+          "type": "JsonWebKey",
+          "controller": "did:midnight:undeployed:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+          "publicKeyJwk": {
+            "kty": "EC",
+            "crv": "P-256",
+            "x": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+            "y": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+          }
+        },
+        {
+          "id": "did:midnight:undeployed:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef#assert-jubjub",
+          "type": "JsonWebKey",
+          "controller": "did:midnight:undeployed:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+          "publicKeyJwk": {
+            "kty": "EC",
+            "crv": "Jubjub",
+            "x": "EMyWcM8XCxkJTyn8MDXM4q6wVLMfqCxYCu0MwT0hHPQ",
+            "y": "H0wYFnDb0GGRQPznl3NU9G1sohdsMMrVdZpEQyiZrd0"
+          }
+        }
+      ],
+      "authentication": [
+        "did:midnight:undeployed:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef#auth-ed25519"
+      ],
+      "assertionMethod": [
+        "did:midnight:undeployed:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef#assert-jubjub"
+      ],
+      "capabilityInvocation": [
+        "did:midnight:undeployed:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef/keys/delegation#p256"
+      ],
+      "alsoKnownAs": ["did:example:portable-holder"],
+      "service": [
+        {
+          "id": "did:midnight:undeployed:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef#linked-domain",
+          "type": "LinkedDomains",
+          "serviceEndpoint": "https://example.com/identity"
+        },
+        {
+          "id": "did:example:other#routing",
+          "type": "DIDCommV2",
+          "serviceEndpoint": "https://relay.example/routing"
+        }
+      ]
+    },
+    "didDocumentMetadata": {
+      "created": "2023-11-14T22:13:20Z",
+      "updated": "2023-11-14T23:00:00Z",
+      "versionId": "5"
+    }
+  },
+  "ed25519": {
+    "seedHex": "9d61b19deffd5a60ba844af492ec2cc44449c5697b326919703bac031cae7f60",
+    "publicKeyHex": "d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a",
+    "messageHex": "",
+    "signatureHex": "e5564300c360ac729086e2cc806e828a84877f1eb8e5d974d873e065224901555fb8821590a33bacc61e39701cf9b46bd25bf5f0595bbe24655141438e7a100b"
+  },
+  "jubjub": {
+    "seedHex": "0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20",
+    "payloadUtf8": "midnight-identity jubjub-schnorr golden vector",
+    "signatureHex": "02b4bfc039ddca33a2bc807a2df358682a81a6dd0db45eaf9567f00d000211460abff840b93c8fbc864111ba6009a31d227a9e04d44adcc6a44c0b103bb459da0603b2f0bc6eb850600cc297da66b157c88c53a731cfda0887153d531eabcd9c"
+  }
+}

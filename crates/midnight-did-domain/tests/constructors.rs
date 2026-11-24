@@ -219,7 +219,7 @@ fn service_new_rejects_empty_type_array() {
 #[test]
 fn service_new_rejects_invalid_id_format() {
     let err = Service::new(NewService {
-        id: "ftp://not-a-did-url".to_string(),
+        id: "//network-path-is-not-a-service-id".to_string(),
         type_: ServiceType::One("LinkedDomains".to_string()),
         service_endpoint: ServiceEndpoint::Uri("https://example.com".to_string()),
     })

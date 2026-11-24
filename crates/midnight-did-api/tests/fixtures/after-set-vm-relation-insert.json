@@ -5,7 +5,7 @@
       "https://w3id.org/security/jwk/v1"
     ],
     "authentication": [
-      "#key-1"
+      "did:midnight:undeployed:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef#key-1"
     ],
     "controller": "did:midnight:undeployed:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
     "id": "did:midnight:undeployed:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
@@ -20,9 +20,7 @@
         },
         "type": "JsonWebKey"
       }
-    ],
-    "alsoKnownAs": null,
-    "service": null
+    ]
   },
   "didDocumentMetadata": {
     "created": "2023-11-14T22:13:20Z",

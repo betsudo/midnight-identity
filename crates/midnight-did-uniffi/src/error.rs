@@ -103,6 +103,22 @@ impl From<ApiError> for FlatError {
         use midnight_did_api::error::{ControllerError, VerificationError};
         match err {
             // R1 step 6: domain-grouped error lifts.
+            ApiError::Verification(VerificationError::MethodAlreadyExists { method_id }) => {
+                FlatError::validation(format!("verification method {method_id} already exists"))
+            }
+            ApiError::Verification(VerificationError::MethodMissing { method_id }) => {
+                FlatError::not_found(format!("verification method {method_id} does not exist"))
+            }
+            ApiError::Verification(VerificationError::MethodReferenced { method_id, relations }) => {
+                FlatError::validation(format!(
+                    "verification method {method_id} is still referenced by {}",
+                    relations
+                        .iter()
+                        .map(|relation| format!("{relation:?}"))
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                ))
+            }
             ApiError::Verification(VerificationError::RelationAlreadyContains { relation, method_id }) => {
                 FlatError::validation(format!(
                     "relation {relation} already contains verification method {method_id}"
@@ -166,4 +182,30 @@ pub(crate) fn decode_hex_32(input: &str, param: &str) -> Result<[u8; 32], FlatEr
     let mut out = [0u8; 32];
     out.copy_from_slice(&bytes);
     Ok(out)
+}
+
+#[cfg(test)]
+mod tests {
+    use midnight_did_api::error::VerificationError;
+
+    use super::*;
+
+    #[test]
+    fn verification_lifecycle_errors_keep_stable_ffi_categories() {
+        let duplicate = FlatError::from(ApiError::from(VerificationError::MethodAlreadyExists {
+            method_id: "#key-1".into(),
+        }));
+        assert!(matches!(duplicate, FlatError::Validation { .. }));
+
+        let missing = FlatError::from(ApiError::from(VerificationError::MethodMissing {
+            method_id: "#key-1".into(),
+        }));
+        assert!(matches!(missing, FlatError::NotFound { .. }));
+
+        let referenced = FlatError::from(ApiError::from(VerificationError::MethodReferenced {
+            method_id: "#key-1".into(),
+            relations: vec![midnight_did_domain::VerificationMethodRelation::Authentication],
+        }));
+        assert!(matches!(referenced, FlatError::Validation { .. }));
+    }
 }
