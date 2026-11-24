@@ -37,6 +37,7 @@ export const ALL_PACKAGES = Object.freeze([
   "midnight-did-resolver",
   "midnight-did-uniffi",
   "midnight-did-jubjub-schnorr",
+  "midnight-vc-did-binding",
   "midnight-passport-account-source",
   "midnight-passport-account",
   "midnight-passport-vault-source",
@@ -51,11 +52,12 @@ const DEPENDENTS = Object.freeze({
     "midnight-did-domain", "midnight-did-method", "midnight-did-runtime",
     "midnight-did-api", "midnight-did", "midnight-did-cli",
     "midnight-did-indexer", "midnight-did-resolver", "midnight-did-uniffi",
+    "midnight-vc-did-binding",
   ],
   "midnight-did-method": [
     "midnight-did-method", "midnight-did-runtime", "midnight-did-api",
     "midnight-did", "midnight-did-cli", "midnight-did-indexer",
-    "midnight-did-resolver", "midnight-did-uniffi",
+    "midnight-did-resolver", "midnight-did-uniffi", "midnight-vc-did-binding",
   ],
   "midnight-did-runtime": [
     "midnight-did-runtime", "midnight-did-api", "midnight-did",
@@ -65,6 +67,7 @@ const DEPENDENTS = Object.freeze({
   "midnight-did-api": [
     "midnight-did-api", "midnight-did", "midnight-did-cli",
     "midnight-did-indexer", "midnight-did-resolver", "midnight-did-uniffi",
+    "midnight-vc-did-binding",
   ],
   "midnight-did-indexer": ["midnight-did-indexer", "midnight-did-resolver"],
   "midnight-did": ["midnight-did"],
@@ -72,6 +75,7 @@ const DEPENDENTS = Object.freeze({
   "midnight-did-resolver": ["midnight-did-resolver"],
   "midnight-did-uniffi": ["midnight-did-uniffi"],
   "midnight-did-jubjub-schnorr": ["midnight-did-jubjub-schnorr", "midnight-vc-proof"],
+  "midnight-vc-did-binding": ["midnight-vc-did-binding"],
   "midnight-passport-account-source": ["midnight-passport-account-source", "midnight-passport-account"],
   "midnight-passport-account": ["midnight-passport-account"],
   "midnight-passport-vault-source": ["midnight-passport-vault-source"],

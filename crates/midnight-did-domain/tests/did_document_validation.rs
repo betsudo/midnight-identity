@@ -785,9 +785,8 @@ fn did_document_metadata_round_trips_all_fields_and_extras() {
 
 #[test]
 fn did_resolution_result_round_trips() {
-    // alsoKnownAs/service serialize as explicit nulls when absent
-    // (TS parity, issue #15) — deserialization accepts both null and
-    // missing, so the round-trip is asymmetric by design.
+    // Legacy explicit nulls remain accepted on input. Ledger 9 TS parity
+    // requires absent optionals to be omitted on output.
     let value = json!({
         "@context": "https://w3id.org/did-resolution/v1",
         "didDocument": {
@@ -813,7 +812,14 @@ fn did_resolution_result_round_trips() {
         result.did_resolution_metadata.error,
         Some(DidResolutionErrorCode("notFound".into()))
     );
-    assert_eq!(serde_json::to_value(&result).unwrap(), value);
+    let mut expected = value;
+    let document = expected
+        .get_mut("didDocument")
+        .and_then(serde_json::Value::as_object_mut)
+        .unwrap();
+    document.remove("alsoKnownAs");
+    document.remove("service");
+    assert_eq!(serde_json::to_value(&result).unwrap(), expected);
 }
 
 #[test]

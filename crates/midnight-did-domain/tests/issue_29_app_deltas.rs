@@ -56,7 +56,9 @@ fn did_document_and_verification_method_extensions_survive_parse_serialize() {
 
     let doc = parse_did_document(value.clone()).unwrap();
     assert_eq!(doc.extra["portalDocumentExtension"], json!([1, 2, 3]));
-    assert_eq!(serde_json::to_value(&doc).unwrap(), value);
+    let mut expected = value;
+    expected.as_object_mut().unwrap().remove("service");
+    assert_eq!(serde_json::to_value(&doc).unwrap(), expected);
 }
 
 #[test]

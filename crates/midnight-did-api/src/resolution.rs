@@ -32,6 +32,7 @@ use midnight_did_domain::did_document::{
     NewPublicKeyJwk, NewService, NewVerificationMethod, PublicKeyJwk, Service, ServiceEndpoint,
     ServiceEndpointArrayEntry, ServiceType, VerificationMethod, VerificationMethodRelation, VerificationMethodType,
 };
+use midnight_did_domain::{DidUrlResolutionOptions, resolve_did_url_reference};
 use midnight_did_method::hex_ext::HashOutputExt;
 use midnight_did_method::midnight_did::{MidnightNetwork, create_midnight_did_string};
 use midnight_did_runtime::{Backend, Contract};
@@ -88,9 +89,8 @@ pub fn ledger_state_to_did_document(
 
     for (id, method) in &state.verification_methods {
         let domain_jwk = ledger_jwk_to_domain(&method.public_key_jwk)?;
-        let absolute_id = absolute_did_url_reference(&did, id);
-        let normalized = verification_method_fragment_id(id);
-        if !seen_ids.insert(normalized) {
+        let absolute_id = absolute_did_url_reference(&did, id)?;
+        if !seen_ids.insert(absolute_id.clone()) {
             return Err(ApiError::mapping("Duplicate verification method id"));
         }
         verification_method.push(VerificationMethod::new(NewVerificationMethod {
@@ -102,9 +102,8 @@ pub fn ledger_state_to_did_document(
     }
     for (id, method) in &state.schnorr_jubjub_verification_methods {
         let domain_jwk = schnorr_jubjub_pk_to_jwk(method)?;
-        let absolute_id = absolute_did_url_reference(&did, id);
-        let normalized = verification_method_fragment_id(id);
-        if !seen_ids.insert(normalized) {
+        let absolute_id = absolute_did_url_reference(&did, id)?;
+        if !seen_ids.insert(absolute_id.clone()) {
             return Err(ApiError::mapping("Duplicate verification method id"));
         }
         verification_method.push(VerificationMethod::new(NewVerificationMethod {
@@ -118,11 +117,11 @@ pub fn ledger_state_to_did_document(
     // Validate every relation entry refers to an existing verification method.
     let assert_targets = |name: &str, members: &[String]| -> Result<(), ApiError> {
         for member in members {
-            let normalized = verification_method_fragment_id(member);
+            let normalized = absolute_did_url_reference(&did, member)?;
             if !seen_ids.contains(&normalized) {
                 return Err(ApiError::mapping(format!(
                     "{name} references missing verification method '{}'",
-                    absolute_did_url_reference(&did, member)
+                    normalized
                 )));
             }
         }
@@ -141,7 +140,8 @@ pub fn ledger_state_to_did_document(
             let parsed = members
                 .iter()
                 .map(|m| {
-                    DidKeyId::parse(verification_method_fragment_id(m))
+                    let absolute_id = absolute_did_url_reference(&did, m)?;
+                    DidKeyId::parse(absolute_id)
                         .map_err(|e| ApiError::mapping(format!("invalid DID key id in relation: {e}")))
                 })
                 .collect::<Result<Vec<_>, _>>()?;
@@ -284,19 +284,67 @@ pub fn verification_method_fragment_id(id: &str) -> String {
 
 /// `LedgerToDomain.absoluteDidUrlReference` — produce an absolute DID URL
 /// rooted at `did` if `id` is relative.
-pub fn absolute_did_url_reference(did: &str, id: &str) -> String {
-    let normalized = verification_method_fragment_id(id);
-    if normalized.starts_with("did:") {
-        normalized
+pub fn absolute_did_url_reference(did: &str, id: &str) -> Result<String, ApiError> {
+    let trimmed = id.trim();
+    let legacy_bare_label = !trimmed.contains('#')
+        && !trimmed.starts_with('/')
+        && !trimmed.starts_with('.')
+        && !trimmed.starts_with('?')
+        && !trimmed.starts_with("did:")
+        && !has_uri_scheme(trimmed);
+    let reference = if legacy_bare_label {
+        format!("#{trimmed}")
     } else {
-        format!("{did}{normalized}")
+        trimmed.to_owned()
+    };
+    resolve_did_url_reference(&reference, did, DidUrlResolutionOptions::default())
+        .map_err(|err| ApiError::mapping(err.to_string()))
+}
+
+fn has_uri_scheme(value: &str) -> bool {
+    let Some((scheme, _)) = value.split_once(':') else {
+        return false;
+    };
+    let mut characters = scheme.chars();
+    characters.next().is_some_and(|first| first.is_ascii_alphabetic())
+        && characters.all(|character| character.is_ascii_alphanumeric() || matches!(character, '+' | '.' | '-'))
+}
+
+/// Resolve a service id using the Ledger 9 TypeScript resolver's permissive
+/// service policy. Verification-method ids are always subject-bound, while
+/// service ids may be external absolute DID URLs or regular absolute URIs.
+fn absolute_service_url_reference(did: &str, id: &str) -> Result<String, ApiError> {
+    let trimmed = id.trim();
+    if trimmed.starts_with("//") {
+        return Ok(format!("{did}#{trimmed}"));
     }
+    let legacy_bare_label = !trimmed.contains('#')
+        && !trimmed.starts_with('/')
+        && !trimmed.starts_with('.')
+        && !trimmed.starts_with('?')
+        && !trimmed.starts_with("did:")
+        && !has_uri_scheme(trimmed);
+    let reference = if legacy_bare_label {
+        format!("#{trimmed}")
+    } else {
+        trimmed.to_owned()
+    };
+    resolve_did_url_reference(
+        &reference,
+        did,
+        DidUrlResolutionOptions {
+            allow_external_did: true,
+            allow_external_url: true,
+            ..DidUrlResolutionOptions::default()
+        },
+    )
+    .map_err(|err| ApiError::mapping(err.to_string()))
 }
 
 /// Parse a ledger service entry, including its JSON-encoded `type` and
 /// `serviceEndpoint`.
 fn parse_ledger_service(svc: &LedgerService, did: &str) -> Result<Service, ApiError> {
-    let id = absolute_did_url_reference(did, &svc.id);
+    let id = absolute_service_url_reference(did, &svc.id)?;
     let type_ = parse_service_type(&svc.typ)?;
     let service_endpoint = parse_service_endpoint(&svc.service_endpoint)?;
     Ok(Service::new(NewService {
@@ -492,6 +540,37 @@ mod tests {
         let vms = doc.verification_method.unwrap();
         assert_eq!(vms.len(), 1);
         assert!(vms[0].id().as_str().ends_with("#key-1"));
+    }
+
+    #[test]
+    fn ledger_identifier_resolution_matches_typescript_reference_cases() {
+        let did = format!("did:midnight:testnet:{ADDR}");
+        assert_eq!(
+            absolute_did_url_reference(&did, "key-1").unwrap(),
+            format!("{did}#key-1")
+        );
+        assert_eq!(
+            absolute_did_url_reference(&did, "/keys/a#key-1").unwrap(),
+            format!("{did}/keys/a#key-1")
+        );
+        assert_eq!(
+            absolute_did_url_reference(&did, "./keys/a#key-1").unwrap(),
+            format!("{did}/keys/a#key-1")
+        );
+        assert!(absolute_did_url_reference(&did, "//attacker.example/key").is_err());
+
+        assert_eq!(
+            absolute_service_url_reference(&did, "did:example:other#service-1").unwrap(),
+            "did:example:other#service-1"
+        );
+        assert_eq!(
+            absolute_service_url_reference(&did, "https://service.example/routing").unwrap(),
+            "https://service.example/routing"
+        );
+        assert_eq!(
+            absolute_service_url_reference(&did, "//legacy-network-path").unwrap(),
+            format!("{did}#//legacy-network-path")
+        );
     }
 
     #[test]

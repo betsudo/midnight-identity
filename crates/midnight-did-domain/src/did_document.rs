@@ -557,6 +557,47 @@ pub enum VerificationMethodRelation {
     CapabilityDelegation,
 }
 
+/// Return whether a verification-method curve is valid for a DID Core
+/// relationship, matching the Ledger 9 TypeScript implementation.
+///
+/// X25519 is reserved for `keyAgreement`; signing relationships accept every
+/// supported curve except X25519.
+#[must_use]
+pub fn is_verification_method_relation_compatible_with_curve(
+    relation: VerificationMethodRelation,
+    curve: CurveType,
+) -> bool {
+    match relation {
+        VerificationMethodRelation::Undefined => false,
+        VerificationMethodRelation::KeyAgreement => curve == CurveType::X25519,
+        VerificationMethodRelation::Authentication
+        | VerificationMethodRelation::AssertionMethod
+        | VerificationMethodRelation::CapabilityInvocation
+        | VerificationMethodRelation::CapabilityDelegation => curve != CurveType::X25519,
+    }
+}
+
+/// Require a curve to be compatible with a DID Core verification
+/// relationship.
+///
+/// # Errors
+///
+/// Returns a validation error when the relationship and curve are not a
+/// valid pair.
+pub fn assert_verification_method_relation_compatible_with_curve(
+    relation: VerificationMethodRelation,
+    curve: CurveType,
+    method_id: &str,
+) -> Result<(), ValidationError> {
+    if is_verification_method_relation_compatible_with_curve(relation, curve) {
+        Ok(())
+    } else {
+        Err(ValidationError::from_issues(vec![ValidationIssue::new(format!(
+            "verification method {method_id} with curve {curve:?} cannot be used for relation {relation:?}"
+        ))]))
+    }
+}
+
 // ---------------------------------------------------------------------------
 // JWK
 // ---------------------------------------------------------------------------
@@ -1392,10 +1433,10 @@ pub struct DidDocument {
     pub id: DidString,
     /// Optional alternate identifiers.
     ///
-    /// TS parity (#15): serialized as an explicit `null` when absent —
-    /// the reference document type defaults these two fields to `null`
-    /// rather than omitting them.
-    #[serde(rename = "alsoKnownAs", default)]
+    /// The Ledger 9 TypeScript resolver omits this property when the ledger
+    /// set is empty. Deserialization remains tolerant of both a missing
+    /// property and the legacy explicit `null` representation.
+    #[serde(rename = "alsoKnownAs", default, skip_serializing_if = "Option::is_none")]
     pub also_known_as: Option<Vec<String>>,
     /// Optional controller(s).
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -1418,10 +1459,9 @@ pub struct DidDocument {
     /// Capability delegation relation.
     #[serde(rename = "capabilityDelegation", default, skip_serializing_if = "Option::is_none")]
     pub capability_delegation: Option<Vec<DidKeyId>>,
-    /// Service endpoints.
-    ///
-    /// TS parity (#15): explicit `null` when absent (see `also_known_as`).
-    #[serde(default)]
+    /// Service endpoints. Omitted when absent, matching the Ledger 9
+    /// TypeScript resolver; legacy explicit `null` still deserializes.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub service: Option<Vec<Service>>,
     /// Unrecognised properties (DID-Core allows extension).
     #[serde(flatten)]

@@ -248,6 +248,16 @@ jobs:
           PACKAGES_CSV: ${{ needs.plan.outputs.packages_csv }}
         run: nix develop .#rust --command bash scripts/ci/rust-target.sh test
 
+      - name: Use Node.js 24 for DID cross-language conformance
+        if: ${{ matrix.os == 'ubuntu-latest' && contains(needs.plan.outputs.packages_csv, 'midnight-did-api') }}
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+
+      - name: Test pinned TypeScript/Rust DID conformance
+        if: ${{ matrix.os == 'ubuntu-latest' && contains(needs.plan.outputs.packages_csv, 'midnight-did-api') }}
+        run: nix develop .#rust --command bash scripts/ci/did-e2e-conformance.sh --cross-language-only
+
       - name: Check native DID runtime for the iOS simulator
         if: ${{ matrix.os == 'macos-latest' }}
         env:

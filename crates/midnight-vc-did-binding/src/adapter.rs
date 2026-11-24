@@ -106,8 +106,16 @@ pub fn resolve_midnight_did_method_binding(
     if result.did_document_metadata.deactivated == Some(true) {
         return Err(BindingError::Deactivated);
     }
-    let fragment = normalize_bound_fragment_id(verification_method_id, BoundIdField::VerificationMethodId, did)
-        .map_err(|_| BindingError::MethodMissing)?;
+    let canonical_method_id =
+        normalize_bound_fragment_id(verification_method_id, BoundIdField::VerificationMethodId, did)
+            .map_err(|_| BindingError::MethodMissing)?;
+    // Credential DID binding v1 hashes a current-subject `#fragment`, not an
+    // arbitrary DID URL. Refuse path/query identities instead of collapsing
+    // them to the same fragment and creating an authorization alias.
+    let fragment = canonical_method_id
+        .strip_prefix(did)
+        .filter(|suffix| suffix.starts_with('#'))
+        .ok_or(BindingError::InvalidMethodId)?;
     let method = document
         .verification_method
         .as_deref()
@@ -115,7 +123,7 @@ pub fn resolve_midnight_did_method_binding(
         .iter()
         .find(|method| {
             normalize_bound_fragment_id(method.id().as_str(), BoundIdField::VerificationMethodId, did)
-                .is_ok_and(|candidate| candidate == fragment)
+                .is_ok_and(|candidate| candidate == canonical_method_id)
         })
         .ok_or(BindingError::MethodMissing)?;
     if method.controller().as_str() != did
@@ -133,7 +141,7 @@ pub fn resolve_midnight_did_method_binding(
     .unwrap_or_default();
     if !relation_entries.iter().any(|entry| {
         normalize_bound_fragment_id(entry.as_str(), BoundIdField::VerificationMethodId, did)
-            .is_ok_and(|candidate| candidate == fragment)
+            .is_ok_and(|candidate| candidate == canonical_method_id)
     }) {
         return Err(BindingError::RelationshipMissing);
     }
@@ -152,7 +160,7 @@ pub fn resolve_midnight_did_method_binding(
         .ok_or(BindingError::InvalidStateVersion)?;
     Ok(MidnightDidMethodBinding {
         controller_address: address.0,
-        method_id: midnight_did_method_id(&fragment)?,
+        method_id: midnight_did_method_id(fragment)?,
         public_key_x: x,
         public_key_y: y,
         did_state_version: version,
@@ -303,6 +311,36 @@ mod tests {
         assert_eq!(
             midnight_did_method_id("#issuer-key").unwrap(),
             midnight_did_method_id("#issuer-key").unwrap(),
+        );
+    }
+
+    #[test]
+    fn binding_refuses_path_identity_instead_of_aliasing_its_fragment() {
+        let mut result = resolution();
+        let document = result.did_document.as_mut().unwrap();
+        let method = document.verification_method.as_ref().unwrap()[0].clone();
+        document.verification_method = Some(vec![
+            midnight_did_domain::VerificationMethod::new(midnight_did_domain::NewVerificationMethod {
+                id: format!("{DID}/keys#issuer-key"),
+                type_: method.type_(),
+                controller: method.controller().as_str().to_owned(),
+                public_key_jwk: method.public_key_jwk().clone(),
+            })
+            .unwrap(),
+        ]);
+        document.assertion_method = Some(vec![
+            midnight_did_domain::DidKeyId::parse(format!("{DID}/keys#issuer-key")).unwrap(),
+        ]);
+
+        assert_eq!(
+            resolve_midnight_did_method_binding(
+                &result,
+                DID,
+                &format!("{DID}/keys#issuer-key"),
+                VerificationRelationship::AssertionMethod,
+            )
+            .unwrap_err(),
+            BindingError::InvalidMethodId,
         );
     }
 
