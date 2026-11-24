@@ -62,22 +62,27 @@ impl MockReply {
             MockReply::Fixture => {
                 let requested = body["variables"]["address"].as_str().unwrap_or_default();
                 if requested.eq_ignore_ascii_case(&fixture_addr()) {
-                    Json(json!({"data": {"contractAction": {"state": STATE_HEX.trim()}}})).into_response()
+                    Json(json!({"data": {"contractAction": {"address": fixture_addr(), "state": STATE_HEX.trim()}}}))
+                        .into_response()
                 } else {
                     Json(json!({"data": {"contractAction": null}})).into_response()
                 }
             }
             MockReply::MismatchedFixture => {
-                Json(json!({"data": {"contractAction": {"state": STATE_HEX.trim()}}})).into_response()
+                Json(json!({"data": {"contractAction": {"address": fixture_addr(), "state": STATE_HEX.trim()}}}))
+                    .into_response()
             }
             MockReply::GraphQlErrors => {
                 Json(json!({"errors": [{"message": "boom"}, {"message": "bang"}]})).into_response()
             }
             MockReply::Http500 => (StatusCode::INTERNAL_SERVER_ERROR, "kaboom").into_response(),
             MockReply::NotJson => "this is not json".into_response(),
-            MockReply::BadHexState => Json(json!({"data": {"contractAction": {"state": "zz"}}})).into_response(),
+            MockReply::BadHexState => {
+                Json(json!({"data": {"contractAction": {"address": fixture_addr(), "state": "zz"}}})).into_response()
+            }
             MockReply::GarbageStateBytes => {
-                Json(json!({"data": {"contractAction": {"state": "00ff10"}}})).into_response()
+                Json(json!({"data": {"contractAction": {"address": fixture_addr(), "state": "00ff10"}}}))
+                    .into_response()
             }
         }
     }

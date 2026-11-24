@@ -39,13 +39,12 @@
 use async_trait::async_trait;
 use midnight_did_runtime::backend::{Backend, BackendError, BuiltTx, FinalizedTxData};
 use midnight_did_runtime::contract_call::DidLedgerSnapshot;
-use midnight_did_runtime::state_decode::{charged_state_from_bytes, decode_ledger_snapshot};
+use midnight_did_runtime::state_decode::{charged_state_from_bytes, snapshot_from_bytes};
 use serde::Deserialize;
 use serde_json::json;
 
-/// The exact query the TS `indexer-public-data-provider` (4.x) issues
-/// for the latest contract state.
-const CONTRACT_STATE_QUERY: &str = "query CONTRACT_STATE_QUERY($address: HexEncoded!, $offset: ContractActionOffset) {\n  contractAction(address: $address, offset: $offset) {\n    state\n  }\n}";
+/// Fetch the state and the address of the indexer action that supplied it.
+const CONTRACT_STATE_QUERY: &str = "query CONTRACT_STATE_QUERY($address: HexEncoded!, $offset: ContractActionOffset) {\n  contractAction(address: $address, offset: $offset) {\n    address\n    state\n  }\n}";
 
 /// Errors from the indexer HTTP/GraphQL exchange.
 #[derive(Debug, thiserror::Error)]
@@ -59,11 +58,23 @@ pub enum IndexerError {
     /// The response body didn't match the expected shape.
     #[error("indexer response: {0}")]
     Malformed(String),
+    /// The indexer returned an action for a different contract.
+    #[error("indexed action address {actual} does not match requested address {expected}")]
+    AddressMismatch {
+        /// Address returned by the indexer.
+        actual: String,
+        /// Address requested by the caller.
+        expected: String,
+    },
 }
 
 impl From<IndexerError> for BackendError {
     fn from(e: IndexerError) -> Self {
-        BackendError::Network(e.to_string())
+        if matches!(e, IndexerError::AddressMismatch { .. }) {
+            BackendError::Decode(e.to_string())
+        } else {
+            BackendError::Network(e.to_string())
+        }
     }
 }
 
@@ -117,8 +128,31 @@ impl IndexerClient {
             .json()
             .await
             .map_err(|e| IndexerError::Malformed(e.to_string()))?;
-        parse_contract_state_response(payload)
+        parse_contract_state_response(payload, address_hex)
     }
+
+    /// Fetch and decode a DID snapshot bound to the requested contract action.
+    ///
+    /// RC1 constructors can leave the stored ID unset. In that case the
+    /// indexer's action address binds the snapshot to the requested DID.
+    pub async fn did_snapshot(&self, address_hex: &str) -> Result<Option<DidLedgerSnapshot>, BackendError> {
+        let Some(bytes) = self.contract_state_bytes(address_hex).await? else {
+            return Ok(None);
+        };
+        let snapshot = snapshot_from_bytes(&bytes)?;
+        validate_snapshot_subject(&snapshot.id_hex, address_hex)?;
+        Ok(Some(snapshot))
+    }
+}
+
+fn validate_snapshot_subject(stored: &str, address: &str) -> Result<(), BackendError> {
+    const ZERO_ID: &str = "0000000000000000000000000000000000000000000000000000000000000000";
+    if stored != ZERO_ID && !stored.eq_ignore_ascii_case(address) {
+        return Err(BackendError::Decode(format!(
+            "indexed contract id {stored} does not match requested address {address}"
+        )));
+    }
+    Ok(())
 }
 
 /// Read-only [`Backend`] over an [`IndexerClient`] + contract address.
@@ -170,15 +204,12 @@ impl Backend for IndexerBackend {
     }
 
     async fn read_snapshot(&self) -> Result<DidLedgerSnapshot, BackendError> {
-        let state = charged_state_from_bytes(&self.fetch_state_bytes().await?)?;
-        let snapshot = decode_ledger_snapshot(&state)?;
-        if !snapshot.id_hex.eq_ignore_ascii_case(&self.address_hex) {
-            return Err(BackendError::Decode(format!(
-                "indexed contract id {} does not match requested address {}",
-                snapshot.id_hex, self.address_hex
-            )));
-        }
-        Ok(snapshot)
+        self.client.did_snapshot(&self.address_hex).await?.ok_or_else(|| {
+            BackendError::Other(format!(
+                "no contract state for address {} (not deployed?)",
+                self.address_hex
+            ))
+        })
     }
 }
 
@@ -202,6 +233,7 @@ struct ContractActionData {
 
 #[derive(Debug, Deserialize)]
 struct ContractAction {
+    address: String,
     state: String,
 }
 
@@ -210,7 +242,10 @@ struct GraphQlError {
     message: String,
 }
 
-fn parse_contract_state_response(payload: GraphQlResponse) -> Result<Option<Vec<u8>>, IndexerError> {
+fn parse_contract_state_response(
+    payload: GraphQlResponse,
+    expected_address: &str,
+) -> Result<Option<Vec<u8>>, IndexerError> {
     if let Some(errors) = payload.errors
         && !errors.is_empty()
     {
@@ -223,6 +258,16 @@ fn parse_contract_state_response(payload: GraphQlResponse) -> Result<Option<Vec<
     let Some(action) = data.contract_action else {
         return Ok(None); // unknown address → notFound
     };
+    if !action
+        .address
+        .trim_start_matches("0x")
+        .eq_ignore_ascii_case(expected_address)
+    {
+        return Err(IndexerError::AddressMismatch {
+            actual: action.address,
+            expected: expected_address.into(),
+        });
+    }
     let bytes = hex::decode(action.state.trim_start_matches("0x"))
         .map_err(|e| IndexerError::Malformed(format!("state field is not hex: {e}")))?;
     Ok(Some(bytes))
@@ -234,13 +279,28 @@ mod tests {
 
     fn parse(json_str: &str) -> Result<Option<Vec<u8>>, IndexerError> {
         let payload: GraphQlResponse = serde_json::from_str(json_str).expect("test JSON parses");
-        parse_contract_state_response(payload)
+        parse_contract_state_response(payload, "aa")
     }
 
     #[test]
     fn parses_state_hex() {
-        let got = parse(r#"{"data":{"contractAction":{"state":"00ff10"}}}"#).unwrap();
+        let got = parse(r#"{"data":{"contractAction":{"address":"aa","state":"00ff10"}}}"#).unwrap();
         assert_eq!(got, Some(vec![0x00, 0xff, 0x10]));
+    }
+
+    #[test]
+    fn a_present_action_requires_the_requested_address() {
+        assert!(matches!(
+            parse(r#"{"data":{"contractAction":{"address":"bb","state":"00"}}}"#),
+            Err(IndexerError::AddressMismatch { .. })
+        ));
+        assert!(serde_json::from_str::<GraphQlResponse>(r#"{"data":{"contractAction":{"state":"00"}}}"#).is_err());
+    }
+
+    #[test]
+    fn nonzero_state_id_must_match_the_action() {
+        assert!(validate_snapshot_subject(&"aa".repeat(32), &"aa".repeat(32)).is_ok());
+        assert!(validate_snapshot_subject(&"bb".repeat(32), &"aa".repeat(32)).is_err());
     }
 
     #[test]
@@ -257,7 +317,7 @@ mod tests {
 
     #[test]
     fn non_hex_state_is_malformed() {
-        let err = parse(r#"{"data":{"contractAction":{"state":"zz"}}}"#).unwrap_err();
+        let err = parse(r#"{"data":{"contractAction":{"address":"aa","state":"zz"}}}"#).unwrap_err();
         assert!(matches!(err, IndexerError::Malformed(_)));
     }
 

@@ -25,7 +25,6 @@
 use midnight_did_api::resolution::{ResolvedMidnightDid, ledger_state_to_did_document, ledger_state_to_metadata};
 use midnight_did_indexer::IndexerClient;
 use midnight_did_method::midnight_did::{MidnightSubjectId, parse_midnight_did, parse_midnight_did_string};
-use midnight_did_runtime::state_decode::{charged_state_from_bytes, decode_ledger_snapshot};
 
 use crate::config::ResolverConfig;
 use crate::endpoint_policy::validate_override;
@@ -112,24 +111,11 @@ impl ResolverService {
 
         // 4. Fetch + decode + project — every step typed.
         let client = IndexerClient::new(indexer_url).map_err(|e| ResolutionError::new(InternalError, e.to_string()))?;
-        let bytes = client
-            .contract_state_bytes(&address_hex)
+        let snapshot = client
+            .did_snapshot(&address_hex)
             .await
             .map_err(|e| ResolutionError::new(InternalError, e.to_string()))?
             .ok_or_else(|| ResolutionError::new(NotFound, format!("no contract state for {address_hex}")))?;
-        let state = charged_state_from_bytes(&bytes).map_err(|e| ResolutionError::new(InternalError, e.to_string()))?;
-        let snapshot =
-            decode_ledger_snapshot(&state).map_err(|e| ResolutionError::new(InternalError, e.to_string()))?;
-        if !snapshot.id_hex.eq_ignore_ascii_case(&address_hex) {
-            return Err(ResolutionError::new(
-                InternalError,
-                format!(
-                    "indexed contract id {} does not match requested DID address {address_hex}",
-                    snapshot.id_hex
-                ),
-            ));
-        }
-
         let did_document = ledger_state_to_did_document(&snapshot, network, &address_hex)
             .map_err(|e| ResolutionError::new(InternalError, e.to_string()))?;
         let did_document_metadata = ledger_state_to_metadata(&snapshot);

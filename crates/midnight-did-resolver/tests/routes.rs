@@ -39,7 +39,7 @@ async fn spawn_mock_indexer() -> String {
     async fn graphql(State(addr): State<String>, Json(body): Json<Value>) -> Json<Value> {
         let requested = body["variables"]["address"].as_str().unwrap_or_default();
         if requested.eq_ignore_ascii_case(&addr) {
-            Json(json!({"data": {"contractAction": {"state": STATE_HEX.trim()}}}))
+            Json(json!({"data": {"contractAction": {"address": fixture_addr(), "state": STATE_HEX.trim()}}}))
         } else {
             Json(json!({"data": {"contractAction": null}}))
         }
