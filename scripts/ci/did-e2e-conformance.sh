@@ -8,6 +8,10 @@ set -euo pipefail
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 ts_root="$repo_root/third_party/midnight-did"
 expected_ts_revision="750268664278c162e9171406983dc45f24bb5be7"
+pnpm_shim_dir="$(mktemp -d "${TMPDIR:-/tmp}/midnight-identity-pnpm.XXXXXX")"
+trap 'rm -rf -- "$pnpm_shim_dir"' EXIT
+corepack enable --install-directory "$pnpm_shim_dir" pnpm
+export PATH="$pnpm_shim_dir:$PATH"
 pnpm_cmd=(corepack pnpm@10.34.5)
 run_rust=true
 run_live=false
