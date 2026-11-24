@@ -146,7 +146,7 @@ fn did_key_id_accessors_round_trip() {
 fn did_key_id_rejects_invalid_fragment_characters() {
     assert!(DidKeyId::parse("did:example:1#bad frag").is_err());
     assert!(DidKeyId::parse("#").is_err());
-    let err = DidKeyId::parse("https://example.com#key").unwrap_err();
+    let err = DidKeyId::parse("//example.com#key").unwrap_err();
     assert!(err.summary.contains("Invalid DID Key ID format"));
 }
 
@@ -531,6 +531,24 @@ fn document_validate_rejects_duplicate_vm_ids_across_spellings() {
 }
 
 #[test]
+fn document_validate_canonicalizes_path_query_and_dot_segment_vm_ids() {
+    let mut path_doc = minimal_doc();
+    path_doc.verification_method = Some(vec![vm("/keys/a#key-1"), vm(&format!("{SUBJECT}/keys/a#key-1"))]);
+    let path_error = path_doc.validate().unwrap_err();
+    assert_eq!(path_error.issues[0].message, "verificationMethod ids must be unique");
+
+    let mut query_doc = minimal_doc();
+    query_doc.verification_method = Some(vec![vm("?version=1#key-1"), vm(&format!("{SUBJECT}?version=1#key-1"))]);
+    let query_error = query_doc.validate().unwrap_err();
+    assert_eq!(query_error.issues[0].message, "verificationMethod ids must be unique");
+
+    let mut relation_doc = minimal_doc();
+    relation_doc.verification_method = Some(vec![vm("/keys/a#key-1")]);
+    relation_doc.authentication = Some(vec![DidKeyId::parse("./keys/../keys/a#key-1").unwrap()]);
+    assert!(relation_doc.validate().is_ok());
+}
+
+#[test]
 fn document_validate_rejects_duplicate_relation_entries() {
     let mut doc = minimal_doc();
     doc.verification_method = Some(vec![vm("#key-1")]);
@@ -581,6 +599,36 @@ fn document_validate_rejects_duplicate_service_ids() {
     let err = doc.validate().unwrap_err();
     assert_eq!(err.issues[0].message, "service ids must be unique");
     assert_eq!(err.issues[0].path, vec!["service", "1", "id"]);
+}
+
+#[test]
+fn document_validate_rejects_duplicate_service_paths_after_canonicalization() {
+    let mut doc = minimal_doc();
+    doc.service = Some(vec![
+        service(
+            "./services/../service-1",
+            ServiceEndpoint::Uri("https://a.example/".into()),
+        ),
+        service(
+            &format!("{SUBJECT}/service-1"),
+            ServiceEndpoint::Uri("https://b.example/".into()),
+        ),
+    ]);
+    let err = doc.validate().unwrap_err();
+    assert_eq!(err.issues[0].message, "service ids must be unique");
+    assert_eq!(err.issues[0].path, vec!["service", "1", "id"]);
+}
+
+#[test]
+fn document_validate_accepts_external_uri_identifiers_like_typescript() {
+    let mut doc = minimal_doc();
+    doc.verification_method = Some(vec![vm("https://keys.example/key#key-1")]);
+    doc.authentication = Some(vec![DidKeyId::parse("https://keys.example/key#key-1").unwrap()]);
+    doc.service = Some(vec![service(
+        "https://services.example/service-1",
+        ServiceEndpoint::Uri("https://endpoint.example/".into()),
+    )]);
+    assert!(doc.validate().is_ok());
 }
 
 #[test]
@@ -785,9 +833,8 @@ fn did_document_metadata_round_trips_all_fields_and_extras() {
 
 #[test]
 fn did_resolution_result_round_trips() {
-    // alsoKnownAs/service serialize as explicit nulls when absent
-    // (TS parity, issue #15) — deserialization accepts both null and
-    // missing, so the round-trip is asymmetric by design.
+    // Legacy explicit nulls remain accepted on input. Ledger 9 TS parity
+    // requires absent optionals to be omitted on output.
     let value = json!({
         "@context": "https://w3id.org/did-resolution/v1",
         "didDocument": {
@@ -813,7 +860,14 @@ fn did_resolution_result_round_trips() {
         result.did_resolution_metadata.error,
         Some(DidResolutionErrorCode("notFound".into()))
     );
-    assert_eq!(serde_json::to_value(&result).unwrap(), value);
+    let mut expected = value;
+    let document = expected
+        .get_mut("didDocument")
+        .and_then(serde_json::Value::as_object_mut)
+        .unwrap();
+    document.remove("alsoKnownAs");
+    document.remove("service");
+    assert_eq!(serde_json::to_value(&result).unwrap(), expected);
 }
 
 #[test]

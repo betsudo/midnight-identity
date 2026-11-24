@@ -12,8 +12,7 @@
         "serviceEndpoint": "https://example.com/didcomm",
         "type": "DIDCommMessaging"
       }
-    ],
-    "alsoKnownAs": null
+    ]
   },
   "didDocumentMetadata": {
     "created": "2023-11-14T22:13:20Z",

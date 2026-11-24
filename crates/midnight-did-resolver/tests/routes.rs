@@ -84,8 +84,9 @@ async fn get_resolve_returns_full_envelope() {
     assert_eq!(body["didResolutionMetadata"]["contentType"], "application/did+ld+json");
     assert_eq!(body["didResolutionMetadata"]["error"], Value::Null);
     assert_eq!(body["didDocument"]["id"], did.as_str());
-    // The enriched fixture carries #key-1 + an authentication relation.
-    assert_eq!(body["didDocument"]["authentication"][0], "#key-1");
+    // The enriched fixture carries #key-1 and resolves the relationship to
+    // the absolute DID URL emitted by the TypeScript implementation.
+    assert_eq!(body["didDocument"]["authentication"][0], format!("{did}#key-1"));
     assert_eq!(
         body["didDocument"]["verificationMethod"][0]["publicKeyJwk"]["kty"],
         "OKP"

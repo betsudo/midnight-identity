@@ -20,7 +20,7 @@
 //! is carried by the [`midnight_did_runtime::Contract`] instance so callers
 //! pass it explicitly. This keeps the helpers pure and testable.
 
-use midnight_did_domain::ledger_utils::{BoundIdField, normalize_bound_fragment_id};
+use midnight_did_domain::ledger_utils::{BoundIdField, normalize_bound_did_url, normalize_bound_fragment_id};
 use midnight_did_method::hex_ext::HashOutputExt;
 use midnight_did_method::midnight_did::{ContractAddress, MidnightNetwork, create_midnight_did_string};
 use midnight_did_runtime::{Backend, Contract};
@@ -35,7 +35,7 @@ pub fn get_did_subject<B: Backend>(contract: &Contract<B>) -> Result<String, Api
 
 /// `normalizeBoundFragmentId(didContract, value, field)` — the contract-aware
 /// wrapper that validates the DID subject of `value` matches the contract's
-/// DID subject before normalising to the leading-`#` form.
+/// DID subject before returning the complete canonical absolute DID URL.
 pub fn normalize_bound_fragment_id_for<B: Backend>(
     contract: &Contract<B>,
     value: &str,
@@ -43,6 +43,19 @@ pub fn normalize_bound_fragment_id_for<B: Backend>(
 ) -> Result<String, ApiError> {
     let subject = get_did_subject(contract)?;
     Ok(normalize_bound_fragment_id(value, field, &subject)?)
+}
+
+/// Contract-aware TypeScript `normalizeBoundDIDURL` equivalent.
+///
+/// Unlike the fragment helper, service identifiers may be query-only,
+/// path-based, or external absolute URLs.
+pub(crate) fn normalize_bound_did_url_for<B: Backend>(
+    contract: &Contract<B>,
+    value: &str,
+    field: BoundIdField,
+) -> Result<String, ApiError> {
+    let subject = get_did_subject(contract)?;
+    Ok(normalize_bound_did_url(value, field, &subject)?)
 }
 
 /// Pure variant that takes a pre-computed DID subject + network.
@@ -82,7 +95,7 @@ mod tests {
         let contract = contract();
         let id =
             normalize_bound_fragment_id_for(&contract, "key-1", BoundIdField::VerificationMethodId).expect("normalize");
-        assert_eq!(id, "#key-1");
+        assert_eq!(id, format!("did:midnight:testnet:{ADDR}#key-1"));
     }
 
     #[test]

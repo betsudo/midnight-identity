@@ -32,7 +32,7 @@
 //! - [`ledger_mappers`] — domain → ledger conversion helpers.
 //! - [`private_state`] — controller private-state lifecycle + storage trait.
 //! - [`controller_operations`] — controller-key rotation.
-//! - [`verification_method_operations`] — VM CRUD + relation purge logic.
+//! - [`verification_method_operations`] — VM CRUD + explicit relationship guards.
 //! - [`service_operations`] — service endpoint CRUD.
 //! - [`document_operations`] — `alsoKnownAs` + deactivation.
 //! - [`resolution`] — ledger snapshot → DID Document.
@@ -59,6 +59,7 @@ pub mod controller_operations;
 pub mod did_operations;
 pub mod document_operations;
 pub mod error;
+mod ledger_identifier_keys;
 pub mod ledger_mappers;
 pub mod private_state;
 pub mod resolution;

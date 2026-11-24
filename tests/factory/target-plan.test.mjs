@@ -31,6 +31,7 @@ test("affected crate plans expand to known compatibility dependents", () => {
   assert.deepEqual(plan.targets, [Target.POLICY, Target.RUST, Target.UNIT, Target.WASM, Target.COVERAGE]);
   assert.ok(plan.packages.includes("midnight-did-domain"));
   assert.ok(plan.packages.includes("midnight-did-resolver"));
+  assert.ok(plan.packages.includes("midnight-vc-did-binding"));
   assert.ok(!plan.packages.includes("midnight-vc-domain"));
 });
 

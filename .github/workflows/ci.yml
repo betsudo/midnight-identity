@@ -248,6 +248,44 @@ jobs:
           PACKAGES_CSV: ${{ needs.plan.outputs.packages_csv }}
         run: nix develop .#rust --command bash scripts/ci/rust-target.sh test
 
+      - name: Use Node.js 24 for DID cross-language conformance
+        if: ${{ matrix.os == 'ubuntu-latest' && contains(needs.plan.outputs.packages_csv, 'midnight-did-api') }}
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+
+      - name: Install immutable Compact 0.36.0 for DID cross-language conformance
+        if: ${{ matrix.os == 'ubuntu-latest' && contains(needs.plan.outputs.packages_csv, 'midnight-did-api') }}
+        env:
+          COMPACTC_SHA256: 7017b6121ebb9d53a562984bca616d143ef84fc7ee18b4da6c3a0a6615cb5e97
+          COMPACTC_URL: https://github.com/midnightntwrk/compact/releases/download/compactc-v0.36.0/compactc_v0.36.0_x86_64-unknown-linux-musl.zip
+        run: |
+          archive="$RUNNER_TEMP/compactc-v0.36.0.zip"
+          install_dir="$RUNNER_TEMP/compactc-v0.36.0"
+          curl --proto '=https' --tlsv1.2 --fail --location --silent --show-error \
+            --retry 5 --output "$archive" "$COMPACTC_URL"
+          printf '%s  %s\n' "$COMPACTC_SHA256" "$archive" | sha256sum --check --status
+          mkdir -p "$install_dir"
+          unzip -q "$archive" -d "$install_dir"
+          actual_version="$("$install_dir/compactc" --version | awk '{print $1}')"
+          test "$actual_version" = "0.36.0"
+          cat > "$install_dir/compact" <<'COMPACT_WRAPPER'
+          #!/usr/bin/env bash
+          set -euo pipefail
+          if [[ "${1:-}" != "compile" ]]; then
+            echo "usage: compact compile [compactc arguments...]" >&2
+            exit 2
+          fi
+          shift
+          exec "$(dirname "${BASH_SOURCE[0]}")/compactc" "$@"
+          COMPACT_WRAPPER
+          chmod 0755 "$install_dir/compact"
+          echo "$install_dir" >> "$GITHUB_PATH"
+
+      - name: Test pinned TypeScript/Rust DID conformance
+        if: ${{ matrix.os == 'ubuntu-latest' && contains(needs.plan.outputs.packages_csv, 'midnight-did-api') }}
+        run: nix develop .#rust --command bash scripts/ci/did-e2e-conformance.sh --cross-language-only
+
       - name: Check native DID runtime for the iOS simulator
         if: ${{ matrix.os == 'macos-latest' }}
         env:

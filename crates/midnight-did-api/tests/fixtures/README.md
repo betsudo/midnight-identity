@@ -23,10 +23,11 @@ Instead, each fixture below captures the *deterministic* result of the
   `packages/api/src/test/ledger-mappers.test.ts`, and the `did.api.test.ts`
   high-fidelity flow.
 
-The fixtures are hand-authored so the Rust + TS pipelines can be compared
-without standing up the wallet stack. If the TS pipeline produces a
-different shape for these inputs, the Rust assertion fails — surfacing the
-divergence early.
+The mutation fixtures are deterministic mapper snapshots. The additional
+`ledger9-cross-language-conformance.json` fixture is executed by both the
+Rust test suite and the pinned TypeScript implementation through
+`scripts/ci/did-cross-language-conformance.mjs`, so drift fails in either
+language without requiring the wallet stack.
 
 ## Files
 
@@ -77,7 +78,7 @@ shape as the initial state plus a residual verification method).
   `setVerificationMethodRelation(Authentication, "#key-1", Insert)`.
   The fixture includes the `verificationMethod` array (the relation
   must reference an existing method) plus an `authentication`
-  array carrying the fragment-form id.
+  array carrying the absolute DID URL used by the current Ledger 9 resolver.
 - `after-set-service-insert.json` — `setService(svc, Insert)`. Single
   URI endpoint, single-string `type`. `parseServiceEndpoint` round
   trips the JSON-encoded URI back to a bare URL string.
@@ -120,7 +121,7 @@ Constants used in every fixture:
 
 ### Authoring notes
 
-The Schnorr-Jubjub fixture follows the Midnight DID v0.7 ledger/domain
+The Schnorr-Jubjub fixture follows the current Midnight DID ledger/domain
 boundary. Ledger `JubjubPointHex` coordinates remain historical
 little-endian bytes, but `LedgerToDomain.schnorrJubjubPkToJwk` projects
 them to canonical domain JWK coordinates by fixing each coordinate to 32
@@ -133,9 +134,9 @@ little-endian strings.
 
 For `setVerificationMethodRelation` the document still carries the
 underlying `verificationMethod` array because the relation must point
-at an existing method. The relation members themselves are normalised
-to their fragment form (e.g. `#key-1`) by
-`LedgerToDomain.ledgerStateToDIDDocument`.
+at an existing method. Relationship members are resolved to absolute DID
+URLs (for example `did:midnight:undeployed:…#key-1`) by the Ledger 9
+`LedgerToDomain.ledgerStateToDIDDocument` implementation.
 
 For `removeService` / `removeVerificationMethod` / `removeAlsoKnownAs`
 / `removeSchnorrJubjubVerificationMethod` the resulting document
@@ -145,7 +146,11 @@ asserted explicitly so a regression that changes the empty-set
 encoding (e.g. emitting `"alsoKnownAs": []` instead of omitting the
 field) is caught.
 
-The extended fixtures are hand-authored against the
+The mutation fixtures are authored against the
 `LedgerToDomain.ledgerStateToDIDDocument` and `ledgerStateToMetadata`
 semantics in `packages/did/src/ledger-to-domain.ts` and the
 `*-to-ledger` helpers in `packages/api/src/ledger-mappers.ts`.
+
+Absent `alsoKnownAs`, `service`, verification methods and relationships are
+omitted on serialization. Rust remains tolerant of legacy explicit `null`
+values when reading older documents.

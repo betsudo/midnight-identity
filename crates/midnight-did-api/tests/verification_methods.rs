@@ -13,7 +13,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//! Integration tests for verification-method CRUD + relation purge logic.
+//! Integration tests for verification-method CRUD + explicit relation logic.
 //!
 //! Rust port of `packages/api/src/test/verification-method-operations.test.ts`
 //! and the related parts of `verification-method-relations.test.ts`. The TS
@@ -22,16 +22,16 @@
 //! - SchnorrJubjub verifyDigestSignature passes a normalized fragment id to
 //!   the contract circuit (`#key-1`, not the absolute `did:midnight:…#key-1`).
 //! - Add / update / remove drive the right `MapMutation` tag.
-//! - Remove purges the verification method from every relation it belongs
-//!   to before invoking `removeVerificationMethod`.
+//! - Remove refuses a verification method while any relationship references
+//!   it, matching the Ledger 9 TypeScript API.
 //! - addRelation / removeRelation reject duplicate-insert and
 //!   missing-remove early.
 
 use std::collections::BTreeMap;
 
 use midnight_did_api::contract::{
-    DidLedgerSnapshot, JubjubPointHex, LedgerVerificationMethodRelation, MapMutation, NewJubjubPointHex,
-    SchnorrJubjubDigest, SchnorrJubjubSignature, SetMutation,
+    DidLedgerSnapshot, JubjubPointHex, LedgerPublicKeyJwk, LedgerSchnorrJubjubVerificationMethod,
+    LedgerVerificationMethod, MapMutation, NewJubjubPointHex, SchnorrJubjubDigest, SchnorrJubjubSignature,
 };
 use midnight_did_api::error::ApiError;
 use midnight_did_api::ledger_mappers::{NewSchnorrJubjubVerificationMethod, SchnorrJubjubVerificationMethod};
@@ -72,9 +72,13 @@ fn did_subject() -> String {
 }
 
 fn ed25519_vm(id: &str) -> VerificationMethod {
+    ed25519_vm_with_id(format!("{}#{id}", did_subject()))
+}
+
+fn ed25519_vm_with_id(id: String) -> VerificationMethod {
     let x = encode_base64url(&[0u8; 32]);
     VerificationMethod::new(NewVerificationMethod {
-        id: format!("{}#{id}", did_subject()),
+        id,
         type_: VerificationMethodType::JsonWebKey,
         controller: did_subject(),
         public_key_jwk: PublicKeyJwk::new(NewPublicKeyJwk {
@@ -89,12 +93,82 @@ fn ed25519_vm(id: &str) -> VerificationMethod {
     .unwrap()
 }
 
+#[tokio::test]
+async fn path_verification_method_does_not_alias_legacy_fragment_record() {
+    let mut ledger = DidLedgerSnapshot::default();
+    ledger
+        .verification_methods
+        .insert("#key-1".into(), ledger_ed25519_vm("key-1"));
+    let c = contract_with_ledger(ledger);
+    let canonical_path_id = format!("{}/keys#key-1", did_subject());
+
+    add_verification_method(&c, &ed25519_vm_with_id(canonical_path_id.clone()))
+        .await
+        .expect("path identity must remain distinct from the legacy fragment");
+
+    assert!(c.backend.recorded_calls().iter().any(|call| {
+        matches!(
+            call,
+            DidContractCall::SetVerificationMethod {
+                method,
+                mutation: MapMutation::Insert,
+            } if method.id == canonical_path_id
+        )
+    }));
+}
+
+#[tokio::test]
+async fn canonical_and_legacy_verification_records_are_rejected_as_ambiguous() {
+    let canonical = format!("{}#key-1", did_subject());
+    let method = ledger_ed25519_vm("key-1");
+    let mut ledger = DidLedgerSnapshot::default();
+    ledger.verification_methods.insert("#key-1".into(), method.clone());
+    ledger.verification_methods.insert(canonical.clone(), method);
+    let c = contract_with_ledger(ledger);
+
+    let err = update_verification_method(&c, &ed25519_vm("key-1"))
+        .await
+        .expect_err("ambiguous canonical and legacy keys must be refused");
+    assert!(matches!(
+        err,
+        ApiError::InvalidArgument(message) if message.contains("ambiguous verification method identifier")
+    ));
+}
+
+fn ledger_ed25519_vm(id: &str) -> LedgerVerificationMethod {
+    LedgerVerificationMethod {
+        id: format!("#{id}"),
+        typ: VerificationMethodType::JsonWebKey,
+        public_key_jwk: LedgerPublicKeyJwk {
+            kty: KeyType::OKP,
+            crv: CurveType::Ed25519,
+            x: encode_base64url(&[0u8; 32]),
+            y: String::new(),
+        },
+    }
+}
+
+fn ledger_jubjub_vm(id: &str) -> LedgerSchnorrJubjubVerificationMethod {
+    LedgerSchnorrJubjubVerificationMethod {
+        id: format!("#{id}"),
+        public_key: JubjubPointHex::new(NewJubjubPointHex {
+            x: "00".repeat(32),
+            y: "01".repeat(32),
+        })
+        .expect("valid Jubjub point fixture"),
+    }
+}
+
 // ---------------------------------------------------------------------------
 // TS: "verifies SchnorrJubjub signatures against a normalized ledger method id"
 // ---------------------------------------------------------------------------
 #[tokio::test]
 async fn verifies_schnorr_jubjub_signature_with_normalized_method_id() {
-    let c = contract();
+    let mut ledger = DidLedgerSnapshot::default();
+    ledger
+        .schnorr_jubjub_verification_methods
+        .insert("#key-1".into(), ledger_jubjub_vm("key-1"));
+    let c = contract_with_ledger(ledger);
     let absolute_method_id = format!("{}#key-1", did_subject());
     let digest = SchnorrJubjubDigest::new(["01".repeat(32), "02".repeat(32), "03".repeat(32), "04".repeat(32)])
         .expect("valid digest fixture");
@@ -135,12 +209,13 @@ async fn add_verification_method_records_insert_with_normalized_id() {
     let calls = c.backend.recorded_calls();
     match &calls[..] {
         [
+            DidContractCall::ReadLedger,
             DidContractCall::SetVerificationMethod {
                 method: ledger,
                 mutation: MapMutation::Insert,
             },
         ] => {
-            assert_eq!(ledger.id, "#key-add");
+            assert_eq!(ledger.id, format!("{}#key-add", did_subject()));
             assert_eq!(ledger.typ, VerificationMethodType::JsonWebKey);
             assert_eq!(ledger.public_key_jwk.kty, KeyType::OKP);
             assert_eq!(ledger.public_key_jwk.crv, CurveType::Ed25519);
@@ -152,13 +227,18 @@ async fn add_verification_method_records_insert_with_normalized_id() {
 
 #[tokio::test]
 async fn update_verification_method_records_update() {
-    let c = contract();
+    let mut ledger = DidLedgerSnapshot::default();
+    ledger
+        .verification_methods
+        .insert("#key-update".into(), ledger_ed25519_vm("key-update"));
+    let c = contract_with_ledger(ledger);
     update_verification_method(&c, &ed25519_vm("key-update"))
         .await
         .expect("update ok");
     let calls = c.backend.recorded_calls();
     match &calls[..] {
         [
+            DidContractCall::ReadLedger,
             DidContractCall::SetVerificationMethod {
                 method: ledger,
                 mutation: MapMutation::Update,
@@ -171,72 +251,43 @@ async fn update_verification_method_records_update() {
 }
 
 #[tokio::test]
-async fn remove_verification_method_purges_then_removes() {
+async fn remove_verification_method_refuses_referenced_method() {
     // Seed: method belongs to two relations.
     let mut ledger = DidLedgerSnapshot::default();
+    ledger
+        .verification_methods
+        .insert("#key-rm".into(), ledger_ed25519_vm("key-rm"));
     ledger.authentication_relation.push("#key-rm".into());
     ledger.key_agreement_relation.push("#key-rm".into());
     let c = contract_with_ledger(ledger);
 
-    remove_verification_method(&c, "key-rm").await.expect("remove ok");
-
-    let calls = c.backend.recorded_calls();
-    // Expect: read_ledger, two remove-relation calls (only on the ones present),
-    // then the final remove-vm.
-    assert!(matches!(calls[0], DidContractCall::ReadLedger), "{:?}", calls);
-
-    let relation_removes: Vec<_> = calls
-        .iter()
-        .filter_map(|c| match c {
-            DidContractCall::SetVerificationMethodRelation {
-                relation: rel,
-                method_id: id,
-                mutation: SetMutation::Remove,
-            } => Some((*rel, id.clone())),
-            _ => None,
-        })
-        .collect();
-    assert_eq!(relation_removes.len(), 2);
-    assert!(
-        relation_removes
-            .iter()
-            .any(|(r, id)| matches!(r, LedgerVerificationMethodRelation::Authentication) && id == "#key-rm")
-    );
-    assert!(
-        relation_removes
-            .iter()
-            .any(|(r, id)| matches!(r, LedgerVerificationMethodRelation::KeyAgreement) && id == "#key-rm")
-    );
-
-    assert!(
-        matches!(calls.last(), Some(DidContractCall::RemoveVerificationMethod { method_id: id }) if id == "#key-rm"),
-        "{:?}",
-        calls
-    );
+    let err = remove_verification_method(&c, "key-rm").await.unwrap_err();
+    assert!(matches!(
+        err,
+        ApiError::Verification(midnight_did_api::error::VerificationError::MethodReferenced { relations, .. })
+            if relations == vec![
+                VerificationMethodRelation::Authentication,
+                VerificationMethodRelation::KeyAgreement,
+            ]
+    ));
+    assert_eq!(c.backend.recorded_calls(), vec![DidContractCall::ReadLedger]);
 }
 
 #[tokio::test]
 async fn remove_verification_method_skips_relations_it_does_not_belong_to() {
-    // Method only in authentication; assertion-method should not be touched.
+    // An unreferenced method is removed directly.
     let mut ledger = DidLedgerSnapshot::default();
-    ledger.authentication_relation.push("#key-solo".into());
+    ledger
+        .verification_methods
+        .insert("#key-solo".into(), ledger_ed25519_vm("key-solo"));
     let c = contract_with_ledger(ledger);
     remove_verification_method(&c, "key-solo").await.expect("remove ok");
     let calls = c.backend.recorded_calls();
-    let removes: Vec<_> = calls
-        .iter()
-        .filter(|c| {
-            matches!(
-                c,
-                DidContractCall::SetVerificationMethodRelation {
-                    relation: _,
-                    method_id: _,
-                    mutation: _
-                }
-            )
-        })
-        .collect();
-    assert_eq!(removes.len(), 1, "expected one relation purge, got: {removes:?}");
+    assert!(matches!(
+        &calls[..],
+        [DidContractCall::ReadLedger, DidContractCall::RemoveVerificationMethod { method_id }]
+            if method_id == "#key-solo"
+    ));
 }
 
 // ---------------------------------------------------------------------------
@@ -259,8 +310,8 @@ async fn add_schnorr_jubjub_verification_method_records_insert() {
     assert!(
         matches!(
             &calls[..],
-            [DidContractCall::SetSchnorrJubjubVerificationMethod { method: ledger, mutation: MapMutation::Insert }]
-                if ledger.id == "#key-sj"
+            [DidContractCall::ReadLedger, DidContractCall::SetSchnorrJubjubVerificationMethod { method: ledger, mutation: MapMutation::Insert }]
+                if ledger.id == format!("{}#key-sj", did_subject())
         ),
         "{:?}",
         calls
@@ -268,18 +319,19 @@ async fn add_schnorr_jubjub_verification_method_records_insert() {
 }
 
 #[tokio::test]
-async fn remove_schnorr_jubjub_verification_method_purges_then_removes() {
+async fn remove_schnorr_jubjub_verification_method_refuses_referenced_method() {
     let mut ledger = DidLedgerSnapshot::default();
+    ledger
+        .schnorr_jubjub_verification_methods
+        .insert("#key-sj".into(), ledger_jubjub_vm("key-sj"));
     ledger.authentication_relation.push("#key-sj".into());
     let c = contract_with_ledger(ledger);
-    remove_schnorr_jubjub_verification_method(&c, "key-sj")
+    let err = remove_schnorr_jubjub_verification_method(&c, "key-sj")
         .await
-        .expect("remove ok");
-    let calls = c.backend.recorded_calls();
-    assert!(matches!(calls[0], DidContractCall::ReadLedger));
+        .unwrap_err();
     assert!(matches!(
-        calls.last(),
-        Some(DidContractCall::RemoveSchnorrJubjubVerificationMethod { method_id: id }) if id == "#key-sj"
+        err,
+        ApiError::Verification(midnight_did_api::error::VerificationError::MethodReferenced { .. })
     ));
 }
 
@@ -304,6 +356,9 @@ fn verification_method_relations_constant_skips_undefined() {
 #[test]
 fn relation_memberships_reports_each_supported_relation() {
     let mut ledger = DidLedgerSnapshot::default();
+    ledger
+        .verification_methods
+        .insert("#key-1".into(), ledger_ed25519_vm("key-1"));
     ledger.authentication_relation.push("#key-1".into());
     ledger.key_agreement_relation.push("#key-1".into());
     ledger.capability_delegation_relation.push("#key-2".into());
@@ -327,6 +382,9 @@ fn relation_memberships_reports_each_supported_relation() {
 #[tokio::test]
 async fn add_verification_method_relation_rejects_already_present() {
     let mut ledger = DidLedgerSnapshot::default();
+    ledger
+        .verification_methods
+        .insert("#key-1".into(), ledger_ed25519_vm("key-1"));
     ledger.authentication_relation.push("#key-1".into());
     let c = contract_with_ledger(ledger);
     let err = add_verification_method_relation(&c, VerificationMethodRelation::Authentication, "key-1")
@@ -345,8 +403,50 @@ async fn add_verification_method_relation_rejects_already_present() {
 }
 
 #[tokio::test]
+async fn add_verification_method_rejects_duplicate_across_ledger_maps() {
+    let mut ledger = DidLedgerSnapshot::default();
+    ledger
+        .schnorr_jubjub_verification_methods
+        .insert("#key-add".into(), ledger_jubjub_vm("key-add"));
+    let c = contract_with_ledger(ledger);
+
+    let err = add_verification_method(&c, &ed25519_vm("key-add")).await.unwrap_err();
+    assert!(matches!(
+        err,
+        ApiError::Verification(midnight_did_api::error::VerificationError::MethodAlreadyExists { .. })
+    ));
+    assert_eq!(c.backend.recorded_calls(), vec![DidContractCall::ReadLedger]);
+}
+
+#[tokio::test]
+async fn relation_curve_rules_match_typescript() {
+    let mut ledger = DidLedgerSnapshot::default();
+    ledger
+        .verification_methods
+        .insert("#signing".into(), ledger_ed25519_vm("signing"));
+    let mut agreement = ledger_ed25519_vm("agreement");
+    agreement.public_key_jwk.crv = CurveType::X25519;
+    ledger.verification_methods.insert("#agreement".into(), agreement);
+    let c = contract_with_ledger(ledger);
+
+    let signing_err = add_verification_method_relation(&c, VerificationMethodRelation::KeyAgreement, "signing")
+        .await
+        .unwrap_err();
+    assert!(signing_err.to_string().contains("cannot be used"));
+
+    let agreement_err = add_verification_method_relation(&c, VerificationMethodRelation::Authentication, "agreement")
+        .await
+        .unwrap_err();
+    assert!(agreement_err.to_string().contains("cannot be used"));
+}
+
+#[tokio::test]
 async fn remove_verification_method_relation_rejects_when_missing() {
-    let c = contract();
+    let mut ledger = DidLedgerSnapshot::default();
+    ledger
+        .verification_methods
+        .insert("#key-1".into(), ledger_ed25519_vm("key-1"));
+    let c = contract_with_ledger(ledger);
     let err = remove_verification_method_relation(&c, VerificationMethodRelation::KeyAgreement, "key-1")
         .await
         .unwrap_err();

@@ -23,12 +23,26 @@ use midnight_did_runtime::{Backend, Contract};
 
 use crate::contract::{FinalizedTxData, MapMutation};
 use crate::error::{ApiError, ContractError};
+use crate::ledger_identifier_keys::{
+    find_existing_service_ledger_id, ledger_identifier, require_existing_service_ledger_id,
+};
 use crate::ledger_mappers::service_to_ledger;
-use crate::subject::normalize_bound_fragment_id_for;
+use crate::subject::normalize_bound_did_url_for;
 
 /// `addService`.
 pub async fn add_service<B: Backend>(contract: &Contract<B>, service: &Service) -> Result<FinalizedTxData, ApiError> {
     let ledger = service_to_ledger(contract, service)?;
+    let state = contract
+        .read_snapshot()
+        .await
+        .map_err(|e| ApiError::Contract(ContractError::Failed(e.to_string())))?;
+    let identifier = ledger_identifier(contract, ledger.id.clone())?;
+    if find_existing_service_ledger_id(&state, &identifier)?.is_some() {
+        return Err(ApiError::invalid_argument(format!(
+            "service {} already exists",
+            ledger.id
+        )));
+    }
     contract
         .set_service(ledger, MapMutation::Insert)
         .await
@@ -40,7 +54,13 @@ pub async fn update_service<B: Backend>(
     contract: &Contract<B>,
     service: &Service,
 ) -> Result<FinalizedTxData, ApiError> {
-    let ledger = service_to_ledger(contract, service)?;
+    let mut ledger = service_to_ledger(contract, service)?;
+    let state = contract
+        .read_snapshot()
+        .await
+        .map_err(|e| ApiError::Contract(ContractError::Failed(e.to_string())))?;
+    let identifier = ledger_identifier(contract, ledger.id.clone())?;
+    ledger.id = require_existing_service_ledger_id(&state, &identifier)?;
     contract
         .set_service(ledger, MapMutation::Update)
         .await
@@ -49,18 +69,26 @@ pub async fn update_service<B: Backend>(
 
 /// `removeService`.
 pub async fn remove_service<B: Backend>(contract: &Contract<B>, service_id: &str) -> Result<FinalizedTxData, ApiError> {
-    let normalized = normalize_bound_fragment_id_for(contract, service_id, BoundIdField::ShortServiceId)?;
+    let canonical = normalize_bound_did_url_for(contract, service_id, BoundIdField::ShortServiceId)?;
+    let state = contract
+        .read_snapshot()
+        .await
+        .map_err(|e| ApiError::Contract(ContractError::Failed(e.to_string())))?;
+    let identifier = ledger_identifier(contract, canonical)?;
+    let physical_id = require_existing_service_ledger_id(&state, &identifier)?;
     contract
-        .remove_service(normalized)
+        .remove_service(physical_id)
         .await
         .map_err(|e| ApiError::Contract(ContractError::Failed(e.to_string())))
 }
 
 #[cfg(test)]
 mod tests {
+    use std::collections::BTreeMap;
+
     use midnight_did_domain::did_document::{NewService, ServiceEndpoint, ServiceType};
     use midnight_did_method::midnight_did::{MidnightNetwork, parse_contract_address};
-    use midnight_did_runtime::{DidContractCall, RecordingBackend};
+    use midnight_did_runtime::{DidContractCall, DidLedgerSnapshot, LedgerService, RecordingBackend};
 
     use super::*;
 
@@ -69,6 +97,25 @@ mod tests {
     fn contract() -> Contract<RecordingBackend> {
         Contract::new(
             RecordingBackend::new(),
+            parse_contract_address(ADDR).unwrap(),
+            MidnightNetwork::Testnet,
+        )
+    }
+
+    fn contract_with_service() -> Contract<RecordingBackend> {
+        let snapshot = DidLedgerSnapshot {
+            services: BTreeMap::from([(
+                "#svc-1".into(),
+                LedgerService {
+                    id: "#svc-1".into(),
+                    typ: "LinkedDomains".into(),
+                    service_endpoint: "\"https://example.com\"".into(),
+                },
+            )]),
+            ..DidLedgerSnapshot::default()
+        };
+        Contract::new(
+            RecordingBackend::with_snapshot(snapshot),
             parse_contract_address(ADDR).unwrap(),
             MidnightNetwork::Testnet,
         )
@@ -87,15 +134,20 @@ mod tests {
         let calls = contract.backend.recorded_calls();
         assert!(matches!(
             &calls[..],
-            [DidContractCall::SetService { service, mutation: MapMutation::Insert }] if service.id == "#svc-1"
+            [DidContractCall::ReadLedger, DidContractCall::SetService { service, mutation: MapMutation::Insert }]
+                if service.id == format!("did:midnight:testnet:{ADDR}/svc-1")
         ));
     }
 
     #[tokio::test]
     async fn removes_a_service() {
-        let contract = contract();
-        remove_service(&contract, "svc-1").await.unwrap();
+        let contract = contract_with_service();
+        remove_service(&contract, "#svc-1").await.unwrap();
         let calls = contract.backend.recorded_calls();
-        assert!(matches!(&calls[..], [DidContractCall::RemoveService { service_id }] if service_id == "#svc-1"));
+        assert!(matches!(
+            &calls[..],
+            [DidContractCall::ReadLedger, DidContractCall::RemoveService { service_id }]
+                if service_id == "#svc-1"
+        ));
     }
 }

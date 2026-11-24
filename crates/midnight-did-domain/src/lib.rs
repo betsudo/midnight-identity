@@ -45,6 +45,7 @@ pub mod crypto_codecs;
 pub mod did_document;
 pub mod did_registrar;
 pub mod did_resolver;
+pub mod did_url;
 pub mod ids;
 pub mod ledger_utils;
 pub mod uri;
@@ -68,8 +69,9 @@ pub use did_document::{
 };
 pub use did_registrar::DidRegistrar;
 pub use did_resolver::MidnightDidResolver;
+pub use did_url::{DidUrlResolutionError, DidUrlResolutionOptions, resolve_did_url_reference};
 pub use ledger_utils::{
-    BoundIdField, assert_absolute_uri, normalize_bound_fragment_id, normalize_fragment_id, service_endpoint_to_ledger,
-    service_type_to_ledger,
+    BoundIdField, assert_absolute_uri, normalize_bound_did_url, normalize_bound_fragment_id, normalize_fragment_id,
+    service_endpoint_to_ledger, service_type_to_ledger,
 };
 pub use uri::{normalize_service_endpoint_value, normalize_uri_string};

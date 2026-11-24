@@ -20,7 +20,10 @@
 //! both files; we merge them here because the operations and the relation
 //! helpers are tightly coupled (relation purge runs as part of remove).
 
-use midnight_did_domain::did_document::{VerificationMethod, VerificationMethodRelation};
+use midnight_did_domain::did_document::{
+    CurveType, VerificationMethod, VerificationMethodRelation,
+    assert_verification_method_relation_compatible_with_curve,
+};
 use midnight_did_domain::ledger_utils::BoundIdField;
 use midnight_did_runtime::{Backend, Contract};
 
@@ -28,6 +31,10 @@ use crate::contract::{
     DidLedgerSnapshot, FinalizedTxData, MapMutation, SchnorrJubjubDigest, SchnorrJubjubSignature, SetMutation,
 };
 use crate::error::{ApiError, ContractError};
+use crate::ledger_identifier_keys::{
+    LedgerIdentifier, VerificationMethodLedgerKind, find_existing_verification_method_ledger_identifier,
+    ledger_identifier, require_existing_verification_method_ledger_id,
+};
 use crate::ledger_mappers::{
     SchnorrJubjubVerificationMethod, ledger_verification_method_relation_for,
     schnorr_jubjub_verification_method_to_ledger, verification_method_to_ledger,
@@ -44,6 +51,97 @@ pub const VERIFICATION_METHOD_RELATIONS: [VerificationMethodRelation; 5] = [
     VerificationMethodRelation::CapabilityDelegation,
 ];
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct ExistingVerificationMethod {
+    physical_id: String,
+    curve: CurveType,
+}
+
+fn find_existing_verification_method(
+    state: &DidLedgerSnapshot,
+    identifier: &LedgerIdentifier,
+) -> Result<Option<ExistingVerificationMethod>, ApiError> {
+    let Some(existing) = find_existing_verification_method_ledger_identifier(state, identifier)? else {
+        return Ok(None);
+    };
+    let curve = match existing.kind {
+        VerificationMethodLedgerKind::Opaque => {
+            let Some(method) = state.verification_methods.get(&existing.id) else {
+                return Ok(None);
+            };
+            method.public_key_jwk.crv
+        }
+        VerificationMethodLedgerKind::SchnorrJubjub => CurveType::Jubjub,
+    };
+    Ok(Some(ExistingVerificationMethod {
+        physical_id: existing.id,
+        curve,
+    }))
+}
+
+fn require_existing_verification_method(
+    state: &DidLedgerSnapshot,
+    identifier: &LedgerIdentifier,
+    opaque: bool,
+) -> Result<ExistingVerificationMethod, ApiError> {
+    let expected_kind = if opaque {
+        VerificationMethodLedgerKind::Opaque
+    } else {
+        VerificationMethodLedgerKind::SchnorrJubjub
+    };
+    let existing_id = require_existing_verification_method_ledger_id(state, identifier, Some(expected_kind))?;
+    find_existing_verification_method(
+        state,
+        &LedgerIdentifier {
+            canonical: existing_id.id,
+            legacy: None,
+        },
+    )?
+    .ok_or_else(|| {
+        crate::error::VerificationError::MethodMissing {
+            method_id: identifier.canonical.clone(),
+        }
+        .into()
+    })
+}
+
+fn referenced_relations(state: &DidLedgerSnapshot, normalized_method_id: &str) -> Vec<VerificationMethodRelation> {
+    verification_method_relation_memberships(state, normalized_method_id)
+        .into_iter()
+        .filter_map(|membership| membership.member.then_some(membership.relation))
+        .collect()
+}
+
+fn assert_method_is_not_referenced(state: &DidLedgerSnapshot, normalized_method_id: &str) -> Result<(), ApiError> {
+    let relations = referenced_relations(state, normalized_method_id);
+    if relations.is_empty() {
+        Ok(())
+    } else {
+        Err(crate::error::VerificationError::MethodReferenced {
+            method_id: normalized_method_id.to_owned(),
+            relations,
+        }
+        .into())
+    }
+}
+
+fn assert_existing_relations_compatible(
+    state: &DidLedgerSnapshot,
+    normalized_method_id: &str,
+    curve: CurveType,
+) -> Result<(), ApiError> {
+    for membership in verification_method_relation_memberships(state, normalized_method_id) {
+        if membership.member {
+            assert_verification_method_relation_compatible_with_curve(
+                membership.relation,
+                curve,
+                normalized_method_id,
+            )?;
+        }
+    }
+    Ok(())
+}
+
 /// Membership entry mirroring `VerificationMethodRelationMembership` in TS.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct VerificationMethodRelationMembership {
@@ -51,6 +149,16 @@ pub struct VerificationMethodRelationMembership {
     pub relation: VerificationMethodRelation,
     /// Whether `normalized_method_id` is currently in the relation.
     pub member: bool,
+}
+
+fn relation_contains_physical_id(
+    state: &DidLedgerSnapshot,
+    relation: crate::contract::LedgerVerificationMethodRelation,
+    physical_method_id: &str,
+) -> bool {
+    state
+        .relation_set(relation)
+        .is_some_and(|members| members.iter().any(|member| member == physical_method_id))
 }
 
 /// Compute membership of `normalized_method_id` across every relation in
@@ -64,7 +172,7 @@ pub fn verification_method_relation_memberships(
         .copied()
         .map(|relation| {
             let ledger_relation = ledger_verification_method_relation_for(relation);
-            let member = state.relation_contains(ledger_relation, normalized_method_id);
+            let member = relation_contains_physical_id(state, ledger_relation, normalized_method_id);
             VerificationMethodRelationMembership { relation, member }
         })
         .collect()
@@ -78,7 +186,7 @@ pub fn assert_verification_method_relation_absent(
     normalized_method_id: &str,
 ) -> Result<(), ApiError> {
     let ledger_relation = ledger_verification_method_relation_for(relation);
-    if state.relation_contains(ledger_relation, normalized_method_id) {
+    if relation_contains_physical_id(state, ledger_relation, normalized_method_id) {
         Err(ApiError::Verification(
             crate::error::VerificationError::RelationAlreadyContains {
                 relation: format!("{relation:?}"),
@@ -98,7 +206,7 @@ pub fn assert_verification_method_relation_present(
     normalized_method_id: &str,
 ) -> Result<(), ApiError> {
     let ledger_relation = ledger_verification_method_relation_for(relation);
-    if state.relation_contains(ledger_relation, normalized_method_id) {
+    if relation_contains_physical_id(state, ledger_relation, normalized_method_id) {
         Ok(())
     } else {
         Err(ApiError::Verification(
@@ -154,6 +262,11 @@ pub async fn add_verification_method<B: Backend>(
     verification_method: &VerificationMethod,
 ) -> Result<FinalizedTxData, ApiError> {
     let ledger = verification_method_to_ledger(contract, verification_method)?;
+    let state = contract.read_snapshot().await.map_err(map_backend_err)?;
+    let identifier = ledger_identifier(contract, ledger.id.clone())?;
+    if find_existing_verification_method(&state, &identifier)?.is_some() {
+        return Err(crate::error::VerificationError::MethodAlreadyExists { method_id: ledger.id }.into());
+    }
     contract
         .set_verification_method(ledger, MapMutation::Insert)
         .await
@@ -165,23 +278,31 @@ pub async fn update_verification_method<B: Backend>(
     contract: &Contract<B>,
     verification_method: &VerificationMethod,
 ) -> Result<FinalizedTxData, ApiError> {
-    let ledger = verification_method_to_ledger(contract, verification_method)?;
+    let mut ledger = verification_method_to_ledger(contract, verification_method)?;
+    let state = contract.read_snapshot().await.map_err(map_backend_err)?;
+    let identifier = ledger_identifier(contract, ledger.id.clone())?;
+    let existing = require_existing_verification_method(&state, &identifier, true)?;
+    assert_existing_relations_compatible(&state, &existing.physical_id, ledger.public_key_jwk.crv)?;
+    ledger.id = existing.physical_id;
     contract
         .set_verification_method(ledger, MapMutation::Update)
         .await
         .map_err(map_backend_err)
 }
 
-/// `removeVerificationMethod` — purges relation memberships then removes
-/// the method.
+/// `removeVerificationMethod` — refuses referenced methods. Relationship
+/// removal must be explicit, matching the Ledger 9 TypeScript API.
 pub async fn remove_verification_method<B: Backend>(
     contract: &Contract<B>,
     method_id: &str,
 ) -> Result<FinalizedTxData, ApiError> {
     let normalized = normalize_bound_fragment_id_for(contract, method_id, BoundIdField::MethodId)?;
-    purge_verification_method_from_all_relations(contract, &normalized).await?;
+    let state = contract.read_snapshot().await.map_err(map_backend_err)?;
+    let identifier = ledger_identifier(contract, normalized)?;
+    let existing = require_existing_verification_method(&state, &identifier, true)?;
+    assert_method_is_not_referenced(&state, &existing.physical_id)?;
     contract
-        .remove_verification_method(normalized)
+        .remove_verification_method(existing.physical_id)
         .await
         .map_err(map_backend_err)
 }
@@ -192,6 +313,11 @@ pub async fn add_schnorr_jubjub_verification_method<B: Backend>(
     verification_method: &SchnorrJubjubVerificationMethod,
 ) -> Result<FinalizedTxData, ApiError> {
     let ledger = schnorr_jubjub_verification_method_to_ledger(contract, verification_method)?;
+    let state = contract.read_snapshot().await.map_err(map_backend_err)?;
+    let identifier = ledger_identifier(contract, ledger.id.clone())?;
+    if find_existing_verification_method(&state, &identifier)?.is_some() {
+        return Err(crate::error::VerificationError::MethodAlreadyExists { method_id: ledger.id }.into());
+    }
     contract
         .set_schnorr_jubjub_verification_method(ledger, MapMutation::Insert)
         .await
@@ -203,23 +329,30 @@ pub async fn update_schnorr_jubjub_verification_method<B: Backend>(
     contract: &Contract<B>,
     verification_method: &SchnorrJubjubVerificationMethod,
 ) -> Result<FinalizedTxData, ApiError> {
-    let ledger = schnorr_jubjub_verification_method_to_ledger(contract, verification_method)?;
+    let mut ledger = schnorr_jubjub_verification_method_to_ledger(contract, verification_method)?;
+    let state = contract.read_snapshot().await.map_err(map_backend_err)?;
+    let identifier = ledger_identifier(contract, ledger.id.clone())?;
+    let existing = require_existing_verification_method(&state, &identifier, false)?;
+    assert_existing_relations_compatible(&state, &existing.physical_id, CurveType::Jubjub)?;
+    ledger.id = existing.physical_id;
     contract
         .set_schnorr_jubjub_verification_method(ledger, MapMutation::Update)
         .await
         .map_err(map_backend_err)
 }
 
-/// `removeSchnorrJubjubVerificationMethod` — purges relation memberships
-/// then removes the method.
+/// `removeSchnorrJubjubVerificationMethod` — refuses referenced methods.
 pub async fn remove_schnorr_jubjub_verification_method<B: Backend>(
     contract: &Contract<B>,
     method_id: &str,
 ) -> Result<FinalizedTxData, ApiError> {
     let normalized = normalize_bound_fragment_id_for(contract, method_id, BoundIdField::MethodId)?;
-    purge_verification_method_from_all_relations(contract, &normalized).await?;
+    let state = contract.read_snapshot().await.map_err(map_backend_err)?;
+    let identifier = ledger_identifier(contract, normalized)?;
+    let existing = require_existing_verification_method(&state, &identifier, false)?;
+    assert_method_is_not_referenced(&state, &existing.physical_id)?;
     contract
-        .remove_schnorr_jubjub_verification_method(normalized)
+        .remove_schnorr_jubjub_verification_method(existing.physical_id)
         .await
         .map_err(map_backend_err)
 }
@@ -232,8 +365,11 @@ pub async fn verify_schnorr_jubjub_digest_signature<B: Backend>(
     signature: SchnorrJubjubSignature,
 ) -> Result<FinalizedTxData, ApiError> {
     let normalized = normalize_bound_fragment_id_for(contract, method_id, BoundIdField::MethodId)?;
+    let state = contract.read_snapshot().await.map_err(map_backend_err)?;
+    let identifier = ledger_identifier(contract, normalized)?;
+    let existing = require_existing_verification_method(&state, &identifier, false)?;
     contract
-        .verify_schnorr_jubjub_digest_signature(normalized, digest, signature)
+        .verify_schnorr_jubjub_digest_signature(existing.physical_id, digest, signature)
         .await
         .map_err(map_backend_err)
 }
@@ -246,10 +382,17 @@ pub async fn add_verification_method_relation<B: Backend>(
 ) -> Result<FinalizedTxData, ApiError> {
     let normalized = normalize_bound_fragment_id_for(contract, method_id, BoundIdField::MethodId)?;
     let state = contract.read_snapshot().await.map_err(map_backend_err)?;
-    assert_verification_method_relation_absent(&state, relation, &normalized)?;
+    let identifier = ledger_identifier(contract, normalized.clone())?;
+    let existing = find_existing_verification_method(&state, &identifier)?.ok_or_else(|| {
+        crate::error::VerificationError::MethodMissing {
+            method_id: normalized.clone(),
+        }
+    })?;
+    assert_verification_method_relation_absent(&state, relation, &existing.physical_id)?;
+    assert_verification_method_relation_compatible_with_curve(relation, existing.curve, &existing.physical_id)?;
     let ledger_relation = ledger_verification_method_relation_for(relation);
     contract
-        .set_verification_method_relation(ledger_relation, normalized, SetMutation::Insert)
+        .set_verification_method_relation(ledger_relation, existing.physical_id, SetMutation::Insert)
         .await
         .map_err(map_backend_err)
 }
@@ -262,10 +405,16 @@ pub async fn remove_verification_method_relation<B: Backend>(
 ) -> Result<FinalizedTxData, ApiError> {
     let normalized = normalize_bound_fragment_id_for(contract, method_id, BoundIdField::MethodId)?;
     let state = contract.read_snapshot().await.map_err(map_backend_err)?;
-    assert_verification_method_relation_present(&state, relation, &normalized)?;
+    let identifier = ledger_identifier(contract, normalized.clone())?;
+    let existing = find_existing_verification_method(&state, &identifier)?.ok_or_else(|| {
+        crate::error::VerificationError::MethodMissing {
+            method_id: normalized.clone(),
+        }
+    })?;
+    assert_verification_method_relation_present(&state, relation, &existing.physical_id)?;
     let ledger_relation = ledger_verification_method_relation_for(relation);
     contract
-        .set_verification_method_relation(ledger_relation, normalized, SetMutation::Remove)
+        .set_verification_method_relation(ledger_relation, existing.physical_id, SetMutation::Remove)
         .await
         .map_err(map_backend_err)
 }
@@ -282,7 +431,7 @@ mod tests {
     use midnight_did_runtime::{DidContractCall, RecordingBackend};
 
     use super::*;
-    use crate::contract::{DidLedgerSnapshot, LedgerVerificationMethodRelation};
+    use crate::contract::{DidLedgerSnapshot, LedgerPublicKeyJwk, LedgerVerificationMethod};
 
     const ADDR: &str = "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc";
 
@@ -325,6 +474,26 @@ mod tests {
         .expect("valid VM fixture")
     }
 
+    fn p256_snapshot(id: &str) -> DidLedgerSnapshot {
+        let normalized = format!("#{id}");
+        let coord = encode_base64url(&[0u8; 32]);
+        let mut snapshot = DidLedgerSnapshot::default();
+        snapshot.verification_methods.insert(
+            normalized.clone(),
+            LedgerVerificationMethod {
+                id: normalized,
+                typ: VerificationMethodType::JsonWebKey,
+                public_key_jwk: LedgerPublicKeyJwk {
+                    kty: KeyType::EC,
+                    crv: CurveType::P256,
+                    x: coord.clone(),
+                    y: coord,
+                },
+            },
+        );
+        snapshot
+    }
+
     #[tokio::test]
     async fn add_verification_method_records_insert() {
         let contract = test_contract();
@@ -333,59 +502,50 @@ mod tests {
         let calls = contract.backend.recorded_calls();
         assert!(matches!(
             &calls[..],
-            [DidContractCall::SetVerificationMethod { method, mutation: MapMutation::Insert }]
-                if method.id == "#key-1"
+            [DidContractCall::ReadLedger, DidContractCall::SetVerificationMethod { method, mutation: MapMutation::Insert }]
+                if method.id == format!("did:midnight:testnet:{ADDR}#key-1")
         ));
     }
 
     #[tokio::test]
     async fn update_verification_method_records_update() {
-        let contract = test_contract();
+        let contract = test_contract_with(p256_snapshot("key-1"));
         update_verification_method(&contract, &p256_vm("key-1")).await.unwrap();
         let calls = contract.backend.recorded_calls();
         assert!(matches!(
             &calls[..],
-            [DidContractCall::SetVerificationMethod {
-                mutation: MapMutation::Update,
-                ..
-            }]
+            [
+                DidContractCall::ReadLedger,
+                DidContractCall::SetVerificationMethod {
+                    mutation: MapMutation::Update,
+                    ..
+                }
+            ]
         ));
     }
 
     #[tokio::test]
-    async fn remove_verification_method_purges_relations() {
-        let mut ledger = DidLedgerSnapshot::default();
+    async fn remove_verification_method_refuses_referenced_method() {
+        let mut ledger = p256_snapshot("key-1");
         ledger.authentication_relation.push("#key-1".into());
         ledger.assertion_method_relation.push("#key-1".into());
         let contract = test_contract_with(ledger);
 
-        remove_verification_method(&contract, "key-1").await.unwrap();
-        let calls = contract.backend.recorded_calls();
-        // read_snapshot + 2 remove-relation + remove vm.
-        assert_eq!(calls.len(), 4);
-        assert!(matches!(calls[0], DidContractCall::ReadLedger));
+        let err = remove_verification_method(&contract, "key-1").await.unwrap_err();
         assert!(matches!(
-            &calls[1],
-            DidContractCall::SetVerificationMethodRelation {
-                relation: LedgerVerificationMethodRelation::Authentication,
-                method_id,
-                mutation: SetMutation::Remove,
-            } if method_id == "#key-1"
+            err,
+            ApiError::Verification(crate::error::VerificationError::MethodReferenced { relations, .. })
+                if relations == vec![
+                    VerificationMethodRelation::Authentication,
+                    VerificationMethodRelation::AssertionMethod,
+                ]
         ));
-        assert!(matches!(
-            &calls[2],
-            DidContractCall::SetVerificationMethodRelation {
-                relation: LedgerVerificationMethodRelation::AssertionMethod,
-                method_id,
-                mutation: SetMutation::Remove,
-            } if method_id == "#key-1"
-        ));
-        assert!(matches!(&calls[3], DidContractCall::RemoveVerificationMethod { method_id } if method_id == "#key-1"));
+        assert_eq!(contract.backend.recorded_calls(), vec![DidContractCall::ReadLedger]);
     }
 
     #[tokio::test]
     async fn add_relation_rejects_already_present() {
-        let mut ledger = DidLedgerSnapshot::default();
+        let mut ledger = p256_snapshot("key-1");
         ledger.authentication_relation.push("#key-1".into());
         let contract = test_contract_with(ledger);
         let err = add_verification_method_relation(&contract, VerificationMethodRelation::Authentication, "key-1")
@@ -399,7 +559,7 @@ mod tests {
 
     #[tokio::test]
     async fn remove_relation_rejects_when_missing() {
-        let contract = test_contract();
+        let contract = test_contract_with(p256_snapshot("key-1"));
         let err = remove_verification_method_relation(&contract, VerificationMethodRelation::KeyAgreement, "key-1")
             .await
             .unwrap_err();
